@@ -1,0 +1,5 @@
+{
+  "name": "Agenda Master AI",
+  "description": "A collaborative task management application inspired by Google Tasks, featuring a Master User view for team management and AI-powered task enrichment.",
+  "requestFramePermissions": []
+}

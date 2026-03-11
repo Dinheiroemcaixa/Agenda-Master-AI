@@ -13,7 +13,12 @@ import { UserAvatar } from './components/UserAvatar';
 import { MiniDashboardResumo } from './components/MiniDashboardResumo';
 import { Task, User, UserRole, Message, Attachment, TaskStatus, CompletionType } from './types';
 import { supabase } from './services/supabaseClient'; 
-import { parseLocalDate, toDateString } from './utils/dateUtils';
+import { 
+  parseLocalDate, toDateString,
+  getStartOfWeek, getEndOfWeek,
+  getStartOfMonth, getEndOfMonth,
+  getStartOfYear, getEndOfYear
+} from './utils/dateUtils';
 import { useFormatters, ROLE_LABELS } from './hooks/useFormatters';
 import { useDataFetching } from './hooks/useDataFetching';
 import { useRealtime } from './hooks/useRealtime';
@@ -21,11 +26,17 @@ import { useTaskHandlers } from './hooks/useTaskHandlers';
 import { 
   Menu, Plus, LogOut, Moon, Sun, Star, Loader2, ShieldCheck, Users, UserCheck, MessageSquare, 
   List, LayoutGrid, Calendar as CalendarIcon, Eye, EyeOff, Video, Clock, X, Search, 
-  CheckCircle2, BarChart3, HelpCircle, Check, Ban
+  CheckCircle2, BarChart3, HelpCircle, Check, Ban,
+  ChevronLeft, ChevronRight, Filter
 } from 'lucide-react';
 
 // Re-exportar para componentes que importam de App.tsx
-export { parseLocalDate, toDateString } from './utils/dateUtils';
+export { 
+  parseLocalDate, toDateString, 
+  getStartOfWeek, getEndOfWeek, 
+  getStartOfMonth, getEndOfMonth, 
+  getStartOfYear, getEndOfYear 
+} from './utils/dateUtils';
 export { generateRecurrenceDates, isTaskVisibleOnDate } from './utils/dateUtils';
 
 export default function App() {
@@ -50,6 +61,9 @@ export default function App() {
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [chatNotification, setChatNotification] = useState<Message | null>(null);
   const [taskToComplete, setTaskToComplete] = useState<string | null>(null);
+
+  const [listDateFilter, setListDateFilter] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('day');
+  const [referenceDate, setReferenceDate] = useState<Date>(new Date());
 
   const [dataRange, setDataRange] = useState<{ start: string; end: string }>(() => {
     const today = new Date();
@@ -193,25 +207,56 @@ export default function App() {
     const todayStr = toDateString(new Date());
     const query = searchQuery.toLowerCase();
     
+    // Calcular limites do filtro
+    let filterStart: string | null = null;
+    let filterEnd: string | null = null;
+
+    if (listDateFilter !== 'all') {
+      if (listDateFilter === 'day') {
+        filterStart = toDateString(referenceDate);
+        filterEnd = filterStart;
+      } else if (listDateFilter === 'week') {
+        filterStart = toDateString(getStartOfWeek(referenceDate));
+        filterEnd = toDateString(getEndOfWeek(referenceDate));
+      } else if (listDateFilter === 'month') {
+        filterStart = toDateString(getStartOfMonth(referenceDate));
+        filterEnd = toDateString(getEndOfMonth(referenceDate));
+      } else if (listDateFilter === 'year') {
+        filterStart = toDateString(getStartOfYear(referenceDate));
+        filterEnd = toDateString(getEndOfYear(referenceDate));
+      }
+    }
+
     return expandedTasks.filter(t => {
       if (hasOperatorPermissions && t.userId !== currentUser?.id) return false;
       const matchesSearch = t.title.toLowerCase().includes(query) || (t.description || '').toLowerCase().includes(query);
       if (!matchesSearch) return false;
 
       // Se estiver visualizando o Calendário, não aplicamos os filtros restritivos de data do Dashboard/Página Ativa
-      // O próprio componente CalendarView se encarregará de filtrar o que exibir em cada dia.
       if (viewType === 'calendar') return true;
       
+      // Aplicar filtro de data se não for "all" e não estiver no calendário
+      if (listDateFilter !== 'all' && t.dueDate) {
+        const tDateStr = toDateString(new Date(t.dueDate));
+        if (filterStart && filterEnd) {
+          if (tDateStr < filterStart || tDateStr > filterEnd) return false;
+        }
+      }
+
       if (activePage === 'dashboard') {
         if (dashboardFilter === 'delayed') return t.userId === currentUser?.id && !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr;
         if (dashboardFilter === 'completed') return t.userId === currentUser?.id && t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr;
+        
+        // Se houver um filtro de data específico (que não seja "all"), ignoramos o filtro de "hoje" padrão do dashboard
+        if (listDateFilter !== 'all') return t.userId === currentUser?.id;
+
         return t.userId === currentUser?.id && t.dueDate && toDateString(new Date(t.dueDate)) === todayStr;
       }
       if (activePage === 'priority') return t.userId === currentUser?.id && t.isStarred;
       if (activePage === 'meetings') return (hasAdminPermissions || t.userId === currentUser?.id) && t.type === 'meeting';
       return true;
     });
-  }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions]);
+  }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions, viewType, listDateFilter, referenceDate]);
 
   const displayUsers = useMemo(() => {
     if (hasOperatorPermissions) return [currentUser].filter(Boolean) as User[];
@@ -227,6 +272,43 @@ export default function App() {
     setDashboardFilter(filter);
     setActivePage('dashboard');
     if (filter === 'completed') setShowCompleted(true);
+  };
+
+  const handleDateNav = (direction: 'prev' | 'next') => {
+    const newDate = new Date(referenceDate);
+    const amount = direction === 'next' ? 1 : -1;
+
+    if (listDateFilter === 'day') newDate.setDate(newDate.getDate() + amount);
+    else if (listDateFilter === 'week') newDate.setDate(newDate.getDate() + (amount * 7));
+    else if (listDateFilter === 'month') newDate.setMonth(newDate.getMonth() + amount);
+    else if (listDateFilter === 'year') newDate.setFullYear(newDate.getFullYear() + amount);
+    
+    setReferenceDate(newDate);
+
+    // Se navegarmos para uma data muito distante, talvez queiramos carregar mais dados?
+    // Atualmente dataRange é -30 a +365. Se sair desse range, o fetchData deve ser chamado.
+    const startObj = new Date(dataRange.start);
+    const endObj = new Date(dataRange.end);
+    if (newDate < startObj || newDate > endObj) {
+      const s = new Date(newDate);
+      s.setDate(s.getDate() - 30);
+      const e = new Date(newDate);
+      e.setDate(e.getDate() + 365);
+      setDataRange({ start: toDateString(s), end: toDateString(e) });
+    }
+  };
+
+  const getFilterLabel = () => {
+    if (listDateFilter === 'all') return 'Todas';
+    if (listDateFilter === 'day') return referenceDate.toLocaleDateString('pt-BR');
+    if (listDateFilter === 'week') {
+      const start = getStartOfWeek(referenceDate);
+      const end = getEndOfWeek(referenceDate);
+      return `${start.getUTCDate()}/${start.getUTCMonth() + 1} - ${end.getUTCDate()}/${end.getUTCMonth() + 1}`;
+    }
+    if (listDateFilter === 'month') return referenceDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    if (listDateFilter === 'year') return referenceDate.getFullYear().toString();
+    return '';
   };
 
   // ── Loading ──
@@ -592,6 +674,40 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2 lg:gap-4">
+                {/* Date Filter Controls */}
+                {viewType !== 'calendar' && activePage !== 'chat' && (
+                  <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-[20px] border border-slate-200/50 dark:border-slate-800/50">
+                    <div className="flex items-center gap-1 px-2 border-r border-slate-200 dark:border-slate-800 mr-1">
+                      <Filter size={14} className="text-slate-400" />
+                      <select 
+                        value={listDateFilter}
+                        onChange={(e) => setListDateFilter(e.target.value as any)}
+                        className="bg-transparent text-[10px] font-black uppercase tracking-tight outline-none cursor-pointer text-slate-600 dark:text-slate-400"
+                      >
+                        <option value="day">Dia</option>
+                        <option value="week">Semana</option>
+                        <option value="month">Mês</option>
+                        <option value="year">Ano</option>
+                        <option value="all">Tudo</option>
+                      </select>
+                    </div>
+
+                    {listDateFilter !== 'all' && (
+                      <div className="flex items-center gap-2 px-2">
+                        <button onClick={() => handleDateNav('prev')} className="p-1 hover:text-indigo-600 transition-colors">
+                          <ChevronLeft size={16} />
+                        </button>
+                        <span className="text-[10px] font-black uppercase tracking-tighter min-w-[80px] text-center">
+                          {getFilterLabel()}
+                        </span>
+                        <button onClick={() => handleDateNav('next')} className="p-1 hover:text-indigo-600 transition-colors">
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* View Type Switcher */}
                 <div className="hidden sm:flex bg-slate-100 dark:bg-slate-900 p-1 rounded-[20px] border border-slate-200/50 dark:border-slate-800/50">
                   {[

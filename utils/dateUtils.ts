@@ -117,3 +117,32 @@ export const isTaskVisibleOnDate = (task: Task, date: Date): boolean => {
   const taskDateStr = toDateString(new Date(task.dueDate));
   return targetDateStr === taskDateStr;
 };
+
+export const getStartOfWeek = (date: Date): Date => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day; // domingo é o início
+  return new Date(d.setDate(diff));
+};
+
+export const getEndOfWeek = (date: Date): Date => {
+  const d = getStartOfWeek(date);
+  d.setDate(d.getDate() + 6);
+  return d;
+};
+
+export const getStartOfMonth = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+};
+
+export const getEndOfMonth = (date: Date): Date => {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+};
+
+export const getStartOfYear = (date: Date): Date => {
+  return new Date(date.getFullYear(), 0, 1);
+};
+
+export const getEndOfYear = (date: Date): Date => {
+  return new Date(date.getFullYear(), 11, 31);
+};

@@ -232,8 +232,8 @@ export default function App() {
       const matchesSearch = t.title.toLowerCase().includes(query) || (t.description || '').toLowerCase().includes(query);
       if (!matchesSearch) return false;
 
-      // Se estiver visualizando o Calendário, não aplicamos os filtros restritivos de data do Dashboard/Página Ativa
-      if (viewType === 'calendar') return true;
+      // Se estiver visualizando o Calendário ou Histórico, não aplicamos os filtros restritivos de data do Dashboard
+      if (viewType === 'calendar' || activePage === 'history') return true;
       
       // Aplicar filtro de data se não for "all" e não estiver no calendário
       if (listDateFilter !== 'all' && t.dueDate) {

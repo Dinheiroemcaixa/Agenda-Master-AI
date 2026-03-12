@@ -71,8 +71,9 @@ export function useDataFetching({
       let tData: any[] = [];
       
       if (fetchAll) {
-          const { data } = await supabase.from('tasks').select('*').order('order', { ascending: true });
+          const { data } = await supabase.from('tasks').select('*').order('order', { ascending: true }).limit(5000);
           tData = data || [];
+          console.log("[FetchData] Modo fetchAll ativado. Itens carregados:", tData.length);
       } else {
           // Busca em duas etapas para garantir que pegamos tudo que importa sem estourar 1000 (ou chegando perto com segurança)
           const [openTasks, completedInRange] = await Promise.all([

@@ -142,48 +142,65 @@ export function useTaskHandlers({
     const t = expandedTasks.find(x => x.id === taskId);
     if (!t) return;
 
-    if (t.isVirtual) {
-      const { isVirtual, id: oldId, ...payload } = t;
-      const now = new Date();
-      const { data, error } = await supabase.from('tasks').insert([{
-        ...payload,
-        dueDate: t.dueDate?.toISOString(),
-        completed: true,
-        status: 'COMPLETED',
-        completion_type: type,
-        completedAt: now.toISOString(),
-        subtasks: JSON.stringify(t.subtasks || []),
-      }]).select();
-      
-      if (error) {
-        console.error("Erro ao converter tarefa virtual:", error);
-        alert("Erro ao salvar tarefa recorrente.");
-      } else if (data) {
-        setTasks(prev => [...prev.filter(x => x.id !== taskId), formatTask(data[0])]);
-        await fetchData(true);
-      }
-      return;
-    }
-
     const now = new Date();
-    setTasks(prev => prev.map(task => task.id === taskId ? { ...task, completed: true, status: 'COMPLETED', completion_type: type, completedAt: now } : task));
+    
+    // Atualização Otimista
+    setTasks(prev => {
+        // Se já estiver no array de tarefas reais, apenas atualiza
+        if (prev.some(x => x.id === taskId)) {
+            return prev.map(task => task.id === taskId ? { 
+                ...task, 
+                completed: true, 
+                status: 'COMPLETED', 
+                completion_type: type, 
+                completedAt: now 
+            } : task);
+        }
+        // Se for virtual, ela será adicionada pelo retorno do Supabase abaixo
+        return prev;
+    });
+
     try {
-      const { error } = await supabase.from('tasks').update({ 
-        completed: true, 
-        status: 'COMPLETED', 
-        completion_type: type, 
-        completedAt: now.toISOString() 
-      }).eq('id', taskId);
-      
-      if (error) {
-        console.error("Erro ao atualizar tarefa concluída:", error);
-        await fetchData(true);
-      } else {
-        await fetchData(true);
-      }
+        if (t.isVirtual) {
+            const { isVirtual, id: oldId, ...payload } = t;
+            const { data, error } = await supabase.from('tasks').insert([{
+                ...payload,
+                dueDate: t.dueDate?.toISOString(),
+                completed: true,
+                status: 'COMPLETED',
+                completion_type: type,
+                completedAt: now.toISOString(),
+                subtasks: JSON.stringify(t.subtasks || []),
+            }]).select();
+            
+            if (error) {
+                console.error("Erro ao converter tarefa virtual:", error);
+                alert("Erro ao salvar tarefa recorrente.");
+                fetchData(true);
+            } else if (data) {
+                const newTask = formatTask(data[0]);
+                setTasks(prev => {
+                    if (prev.some(x => x.id === newTask.id)) return prev;
+                    return [...prev, newTask];
+                });
+            }
+            return;
+        }
+
+        const { error } = await supabase.from('tasks').update({ 
+            completed: true, 
+            status: 'COMPLETED', 
+            completion_type: type, 
+            completedAt: now.toISOString() 
+        }).eq('id', taskId);
+        
+        if (error) {
+            console.error("Erro ao atualizar tarefa concluída:", error);
+            fetchData(true);
+        }
     } catch (err) {
-      console.error("Erro ao concluir tarefa:", err);
-      await fetchData(true);
+        console.error("Erro ao concluir tarefa:", err);
+        fetchData(true);
     }
   }, [expandedTasks, formatTask, fetchData, setTasks]);
 
@@ -196,51 +213,45 @@ export function useTaskHandlers({
     const now = new Date();
     const completedAt = newCompleted ? now : null;
 
-    if (t.isVirtual) {
-      // Se for virtual, precisamos inserir no banco para que se torne real ao mudar status
-      const { isVirtual, id: oldId, ...payload } = t;
-      try {
-        const { data, error } = await supabase.from('tasks').insert([{
-          ...payload,
-          dueDate: t.dueDate?.toISOString(),
-          status: s,
-          completed: newCompleted,
-          completedAt: completedAt?.toISOString(),
-          subtasks: JSON.stringify(t.subtasks || []),
-        }]).select();
-
-        if (error) throw error;
-        if (data) {
-          setTasks(prev => [...prev.filter(x => x.id !== id), formatTask(data[0])]);
-          await fetchData(true);
-        }
-      } catch (err) {
-        console.error("Erro ao converter tarefa virtual via status:", err);
-        await fetchData(true);
-      }
-      return;
+    // Atualização Otimista (apenas se não for virtual)
+    if (!t.isVirtual) {
+        setTasks(prev => prev.map(task => 
+            task.id === id ? { ...task, status: s, completed: newCompleted, completedAt: completedAt || undefined } : task
+        ));
     }
 
-    setTasks(prev => prev.map(task => 
-      task.id === id ? { ...task, status: s, completed: newCompleted, completedAt: completedAt || undefined } : task
-    ));
-
     try {
-      const { error } = await supabase.from('tasks').update({ 
-        status: s, 
-        completed: newCompleted,
-        completedAt: completedAt?.toISOString() || null
-      }).eq('id', id);
-      
-      if (error) {
-        console.error("Erro ao atualizar status no banco:", error);
-        await fetchData(true);
-      } else {
-        await fetchData(true);
-      }
+        if (t.isVirtual) {
+            const { isVirtual, id: oldId, ...payload } = t;
+            const { data, error } = await supabase.from('tasks').insert([{
+                ...payload,
+                dueDate: t.dueDate?.toISOString(),
+                status: s,
+                completed: newCompleted,
+                completedAt: completedAt?.toISOString(),
+                subtasks: JSON.stringify(t.subtasks || []),
+            }]).select();
+
+            if (error) throw error;
+            if (data) {
+                setTasks(prev => [...prev.filter(x => x.id !== id), formatTask(data[0])]);
+            }
+            return;
+        }
+
+        const { error } = await supabase.from('tasks').update({ 
+            status: s, 
+            completed: newCompleted,
+            completedAt: completedAt?.toISOString() || null
+        }).eq('id', id);
+        
+        if (error) {
+            console.error("Erro ao atualizar status no banco:", error);
+            fetchData(true);
+        }
     } catch (err) {
-      console.error("Erro ao atualizar status:", err);
-      await fetchData(true);
+        console.error("Erro ao atualizar status:", err);
+        fetchData(true);
     }
   }, [expandedTasks, fetchData, setTasks, formatTask]);
 

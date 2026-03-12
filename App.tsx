@@ -405,10 +405,7 @@ export default function App() {
     showCompleted,
     currentUser,
     onOpenAddTask: () => setIsTaskModalOpen(true),
-    onToggleTask: handleToggleTask,
-    onUpdateStatus: handleUpdateStatus,
-    onDeleteTask: handleDelete,
-    onEditTask: (t: Task) => { setViewingTask(t); setIsDetailsModalOpen(true); },
+    onToggleTask: handleToggleTask,    onEditTask: (t: Task) => { setViewingTask(t); setIsTaskModalOpen(true); },
     onViewTask: (t: Task) => { setViewingTask(t); setIsDetailsModalOpen(true); },
     onToggleStar: handleToggleStar,
     onChangeOrder: handleChangeOrder,
@@ -781,7 +778,7 @@ export default function App() {
                     onOpenAddTask={() => setIsTaskModalOpen(true)}
                     onToggleTask={handleToggleTask}
                     onDeleteTask={handleDelete}
-                    onEditTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }}
+                    onEditTask={(t) => { setViewingTask(t); setIsTaskModalOpen(true); }}
                     onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }}
                     onToggleStar={handleToggleStar}
                   />
@@ -792,7 +789,7 @@ export default function App() {
                     tasks={filteredTasks}
                     users={processedUsers}
                     onOpenAddTask={() => setIsTaskModalOpen(true)}
-                    onEditTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }}
+                    onEditTask={(t) => { setViewingTask(t); setIsTaskModalOpen(true); }}
                     onDateRangeChange={(start, end) => setDataRange({ start, end })}
                   />
                 )}
@@ -865,7 +862,10 @@ export default function App() {
                   startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
                 }]).select();
                 if (error) throw error;
-                if (data) setTasks(prev => [...prev, formatTask(data[0])]);
+                if (data) {
+                    const nt = formatTask(data[0]);
+                    setTasks(prev => [...prev.filter(x => x.id !== viewingTask.id), nt]);
+                }
               } else {
                 const { error } = await supabase.from('tasks').update({
                   title: d.title, description: d.description,
@@ -892,12 +892,16 @@ export default function App() {
               };
               const { data, error } = await supabase.from('tasks').insert([payload]).select();
               if (error) throw error;
-              if (data) setTasks(prev => [...prev, formatTask(data[0])]);
+              if (data) {
+                  const nt = formatTask(data[0]);
+                  setTasks(prev => [...prev, nt]);
+              }
             }
-            fetchData(true);
+            fetchData(true); // Chamada não-bloqueante (sem await) para sincronizar se necessário
           } catch (err: any) {
             console.error("Erro ao salvar:", err);
             alert("Erro ao salvar no banco: " + (err.message || String(err)));
+            fetchData(true);
             throw err;
           }
         }} 

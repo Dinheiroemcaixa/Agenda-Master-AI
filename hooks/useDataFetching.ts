@@ -80,8 +80,16 @@ export function useDataFetching({
       }
       
       console.log(`[FetchData] Após filtro: ${fTasks.length} tarefas. Concluídas: ${fTasks.filter(t => t.completed).length}`);
-      if (fTasks.some(t => t.completed)) {
-          console.table(fTasks.filter(t => t.completed).map(t => ({ id: t.id, title: t.title, status: t.status, date: t.dueDate })));
+      if (fTasks.length > 0) {
+          console.log("[FetchData] Top 30 tarefas:");
+          console.table(fTasks.slice(0, 30).map(t => ({
+              id: t.id.substring(0, 8),
+              title: t.title.substring(0, 20),
+              status: t.status,
+              completed: t.completed,
+              groupId: t.recurrenceGroupId?.substring(0, 8) || 'N/A',
+              dueDate: t.dueDate ? toDateString(t.dueDate) : 'N/A'
+          })));
       }
 
       setTasks(prev => {

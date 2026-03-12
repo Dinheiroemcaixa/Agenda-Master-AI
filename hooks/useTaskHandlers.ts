@@ -39,10 +39,20 @@ export function useTaskHandlers({
     
     const realTasksLookup = new Set<string>();
     tasks.forEach(t => {
-      if (t.recurrenceGroupId && t.dueDate && t.status !== 'DELETED') {
-        realTasksLookup.add(`${t.recurrenceGroupId}_${toDateString(t.dueDate)}`);
+      // Forçar parseLocalDate para garantir consistência no lookup
+      const d = t.dueDate instanceof Date ? t.dueDate : (t.dueDate ? parseLocalDate(t.dueDate as any) : null);
+      if (t.recurrenceGroupId && d && t.status !== 'DELETED') {
+        const key = `${t.recurrenceGroupId}_${toDateString(d)}`;
+        realTasksLookup.add(key);
       }
     });
+
+    if (tasks.length > 0) {
+        const completedWithGroup = tasks.filter(t => t.completed && t.recurrenceGroupId);
+        if (completedWithGroup.length > 0) {
+            console.log(`[ExpandedTasks] Encontradas ${completedWithGroup.length} tarefas reais concluídas com grupo.`);
+        }
+    }
 
     const recurrenceMasters = tasks.filter(t => t.recurrence && t.recurrence !== 'NONE' && t.recurrenceGroupId && t.status !== 'DELETED');
     
@@ -81,7 +91,29 @@ export function useTaskHandlers({
       });
     });
 
-    return result;
+    // Camada final de desduplicação: Preferir REAL sobre VIRTUAL para a mesma data/grupo
+    const finalResult: Task[] = [];
+    const seenKeys = new Map<string, Task>();
+
+    result.forEach(t => {
+      const d = t.dueDate instanceof Date ? t.dueDate : (t.dueDate ? parseLocalDate(t.dueDate as any) : null);
+      const key = (t.recurrenceGroupId && d) ? `${t.recurrenceGroupId}_${toDateString(d)}` : t.id;
+      
+      if (!seenKeys.has(key)) {
+        seenKeys.set(key, t);
+        finalResult.push(t);
+      } else {
+        const existing = seenKeys.get(key)!;
+        // Se a nova tarefa é REAL e a existente é VIRTUAL, trocamos
+        if (existing.isVirtual && !t.isVirtual) {
+          seenKeys.set(key, t);
+          const idx = finalResult.findIndex(x => x.id === existing.id);
+          if (idx !== -1) finalResult[idx] = t;
+        }
+      }
+    });
+
+    return finalResult;
   }, [tasks, dataRange]);
 
   // ── Dashboard stats ──

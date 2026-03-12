@@ -117,7 +117,6 @@ export function useRealtime({
         if (status === 'SUBSCRIBED') { 
           retryCountRef.current = 0;
           await channel.track({ online_at: new Date().toISOString() }); 
-          fetchDataRef.current(true);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           if (!navigator.onLine) {
             const handleOnline = () => {

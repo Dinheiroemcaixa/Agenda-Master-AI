@@ -78,7 +78,11 @@ export function useDataFetching({
         );
       }
 
-      setTasks(fTasks);
+      setTasks(prev => {
+        const tempTasks = prev.filter(t => t.id.startsWith('temp_'));
+        // Mescla: pega o que veio do banco e mantém o que ainda é temporário localmente
+        return [...fTasks, ...tempTasks];
+      });
       setUsers((uData || []).map((u: any) => formatUser(u, false)));
 
       if (!isSilent && !currentUser) {

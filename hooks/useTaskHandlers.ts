@@ -132,7 +132,6 @@ export function useTaskHandlers({
             alert("Erro ao desmarcar tarefa no banco: " + error.message);
             fetchData(true);
         }
-        setTimeout(() => fetchData(true), 1500);
       } catch (err: any) {
         console.error("Erro ao desmarcar tarefa:", err);
         alert("Erro inesperado ao desmarcar: " + (err.message || String(err)));
@@ -216,9 +215,6 @@ export function useTaskHandlers({
                 fetchData(true);
             }
         }
-        
-        setTimeout(() => fetchData(true), 1500); 
-
     } catch (err: any) {
         console.error("Erro inesperado ao concluir tarefa:", err);
         alert("Erro inesperado: " + (err.message || String(err)));
@@ -290,10 +286,6 @@ export function useTaskHandlers({
                 fetchData(true);
             }
         }
-        
-        // Sincronizar após um pequeno delay para garantir que o banco processou
-        setTimeout(() => fetchData(true), 1500);
-
     } catch (err: any) {
         console.error("Erro ao atualizar status:", err);
         alert("Erro ao atualizar status: " + (err.message || String(err)));

@@ -60,24 +60,44 @@ export function useDataFetching({
       }
 
       const range = customRange || dataRange;
-      const tasksQuery = supabase.from('tasks').select('*');
+      const rangeStartStr = toDateString(parseLocalDate(range.start));
+      const rangeEndStr = toDateString(parseLocalDate(range.end));
 
-      const [{ data: uData }, { data: tData }] = await Promise.all([
-        supabase.from('users').select('*'),
-        tasksQuery.order('order', { ascending: true }).order('dueDate', { ascending: true }),
-      ]);
+      // 1. Buscar usuários
+      const { data: uData } = await supabase.from('users').select('*');
+
+      // 2. Buscar tarefas com filtro no servidor para evitar o limite de 1000 linhas
+      // Queremos: (Não concluídas) OU (Concluídas no intervalo)
+      let tData: any[] = [];
+      
+      if (fetchAll) {
+          const { data } = await supabase.from('tasks').select('*').order('order', { ascending: true });
+          tData = data || [];
+      } else {
+          // Busca em duas etapas para garantir que pegamos tudo que importa sem estourar 1000 (ou chegando perto com segurança)
+          const [openTasks, completedInRange] = await Promise.all([
+              supabase.from('tasks').select('*').eq('completed', false).order('order', { ascending: true }).limit(5000),
+              supabase.from('tasks')
+                .select('*')
+                .eq('completed', true)
+                .gte('dueDate', rangeStartStr)
+                .lte('dueDate', rangeEndStr)
+                .order('dueDate', { ascending: true })
+                .limit(5000)
+          ]);
+          
+          tData = [...(openTasks.data || []), ...(completedInRange.data || [])];
+          if (tData.length > 0) {
+              console.log("[FetchData] Chaves detectadas no objeto raw:", Object.keys(tData[0]));
+          }
+      }
 
       console.log(`[FetchData] Brutos: ${tData?.length || 0} tarefas.`);
       const allTasks = (tData || []).map(formatTask);
-
+ 
       let fTasks = allTasks;
-      if (!fetchAll) {
-        fTasks = allTasks.filter((t: Task) =>
-          !t.completed ||
-          (t.dueDate && t.dueDate >= parseLocalDate(range.start) && t.dueDate <= parseLocalDate(range.end)) ||
-          (t.completedAt && t.completedAt >= parseLocalDate(range.start))
-        );
-      }
+      // O filtro agora é feito no servidor para evitar o limite de 1000 linhas.
+      // Não aplicamos mais filtro agressivo no frontend para não perder tarefas reais que bloqueiam as virtuais.
       
       console.log(`[FetchData] Após filtro: ${fTasks.length} tarefas. Concluídas: ${fTasks.filter(t => t.completed).length}`);
       if (fTasks.length > 0) {

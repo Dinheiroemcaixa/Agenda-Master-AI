@@ -126,9 +126,16 @@ export function useTaskHandlers({
     if (t.completed) {
       setTasks(prev => prev.map(task => task.id === id ? { ...task, completed: false, status: 'OPEN', completion_type: 'normal', completedAt: undefined } : task));
       try {
-        await supabase.from('tasks').update({ completed: false, status: 'OPEN', completion_type: 'normal', completedAt: null }).eq('id', id);
-      } catch (err) {
+        const { error } = await supabase.from('tasks').update({ completed: false, status: 'OPEN', completion_type: 'normal', completedAt: null }).eq('id', id);
+        if (error) {
+            console.error("Erro ao desmarcar tarefa:", error);
+            alert("Erro ao desmarcar tarefa no banco: " + error.message);
+            fetchData(true);
+        }
+        setTimeout(() => fetchData(true), 1500);
+      } catch (err: any) {
         console.error("Erro ao desmarcar tarefa:", err);
+        alert("Erro inesperado ao desmarcar: " + (err.message || String(err)));
         fetchData(true);
       }
       return null; // No completion modal needed
@@ -144,20 +151,30 @@ export function useTaskHandlers({
 
     const now = new Date();
     
-    // Atualização Otimista
+    // 1. Atualização Otimista Total
     setTasks(prev => {
-        // Se já estiver no array de tarefas reais, apenas atualiza
-        if (prev.some(x => x.id === taskId)) {
-            return prev.map(task => task.id === taskId ? { 
+        const targetStatus: TaskStatus = 'COMPLETED';
+        if (t.isVirtual) {
+            const tempRealTask: Task = {
+                ...t,
+                id: `temp_${Date.now()}`, 
+                isVirtual: false,
+                completed: true,
+                status: targetStatus,
+                completion_type: type,
+                completedAt: now
+            };
+            return [...prev, tempRealTask];
+        }
+        return prev.map(task => 
+            task.id === taskId ? { 
                 ...task, 
                 completed: true, 
-                status: 'COMPLETED', 
+                status: targetStatus, 
                 completion_type: type, 
                 completedAt: now 
-            } : task);
-        }
-        // Se for virtual, ela será adicionada pelo retorno do Supabase abaixo
-        return prev;
+            } : task
+        );
     });
 
     try {
@@ -175,31 +192,36 @@ export function useTaskHandlers({
             
             if (error) {
                 console.error("Erro ao converter tarefa virtual:", error);
-                alert("Erro ao salvar tarefa recorrente.");
+                alert("Erro ao salvar no banco (Tarefa Recorrente): " + error.message);
                 fetchData(true);
             } else if (data) {
                 const newTask = formatTask(data[0]);
                 setTasks(prev => {
-                    if (prev.some(x => x.id === newTask.id)) return prev;
-                    return [...prev, newTask];
+                    const withoutTemp = prev.filter(x => !x.id.startsWith('temp_'));
+                    if (withoutTemp.some(x => x.id === newTask.id)) return withoutTemp;
+                    return [...withoutTemp, newTask];
                 });
             }
-            return;
+        } else {
+            const { error } = await supabase.from('tasks').update({ 
+                completed: true, 
+                status: 'COMPLETED', 
+                completion_type: type, 
+                completedAt: now.toISOString() 
+            }).eq('id', taskId);
+            
+            if (error) {
+                console.error("Erro ao atualizar tarefa no banco:", error);
+                alert("Erro ao salvar no banco: " + error.message);
+                fetchData(true);
+            }
         }
-
-        const { error } = await supabase.from('tasks').update({ 
-            completed: true, 
-            status: 'COMPLETED', 
-            completion_type: type, 
-            completedAt: now.toISOString() 
-        }).eq('id', taskId);
         
-        if (error) {
-            console.error("Erro ao atualizar tarefa concluída:", error);
-            fetchData(true);
-        }
-    } catch (err) {
-        console.error("Erro ao concluir tarefa:", err);
+        setTimeout(() => fetchData(true), 1500); 
+
+    } catch (err: any) {
+        console.error("Erro inesperado ao concluir tarefa:", err);
+        alert("Erro inesperado: " + (err.message || String(err)));
         fetchData(true);
     }
   }, [expandedTasks, formatTask, fetchData, setTasks]);
@@ -213,12 +235,23 @@ export function useTaskHandlers({
     const now = new Date();
     const completedAt = newCompleted ? now : null;
 
-    // Atualização Otimista (apenas se não for virtual)
-    if (!t.isVirtual) {
-        setTasks(prev => prev.map(task => 
+    // Atualização Otimista Total
+    setTasks(prev => {
+        if (t.isVirtual) {
+            const tempRealTask: Task = {
+                ...t,
+                id: `temp_${Date.now()}`,
+                isVirtual: false,
+                status: s,
+                completed: newCompleted,
+                completedAt: completedAt || undefined
+            };
+            return [...prev, tempRealTask];
+        }
+        return prev.map(task => 
             task.id === id ? { ...task, status: s, completed: newCompleted, completedAt: completedAt || undefined } : task
-        ));
-    }
+        );
+    });
 
     try {
         if (t.isVirtual) {
@@ -232,25 +265,38 @@ export function useTaskHandlers({
                 subtasks: JSON.stringify(t.subtasks || []),
             }]).select();
 
-            if (error) throw error;
-            if (data) {
-                setTasks(prev => [...prev.filter(x => x.id !== id), formatTask(data[0])]);
+            if (error) {
+                console.error("Erro ao converter virtual no status:", error);
+                alert("Erro ao salvar status (Tarefa Recorrente): " + error.message);
+                fetchData(true);
+            } else if (data) {
+                const newTask = formatTask(data[0]);
+                setTasks(prev => {
+                    const withoutTemp = prev.filter(x => !x.id.startsWith('temp_'));
+                    if (withoutTemp.some(x => x.id === newTask.id)) return withoutTemp;
+                    return [...withoutTemp, newTask];
+                });
             }
-            return;
+        } else {
+            const { error } = await supabase.from('tasks').update({ 
+                status: s, 
+                completed: newCompleted,
+                completedAt: completedAt?.toISOString() || null
+            }).eq('id', id);
+            
+            if (error) {
+                console.error("Erro ao atualizar status no banco:", error);
+                alert("Erro ao atualizar status: " + error.message);
+                fetchData(true);
+            }
         }
-
-        const { error } = await supabase.from('tasks').update({ 
-            status: s, 
-            completed: newCompleted,
-            completedAt: completedAt?.toISOString() || null
-        }).eq('id', id);
         
-        if (error) {
-            console.error("Erro ao atualizar status no banco:", error);
-            fetchData(true);
-        }
-    } catch (err) {
+        // Sincronizar após um pequeno delay para garantir que o banco processou
+        setTimeout(() => fetchData(true), 1500);
+
+    } catch (err: any) {
         console.error("Erro ao atualizar status:", err);
+        alert("Erro ao atualizar status: " + (err.message || String(err)));
         fetchData(true);
     }
   }, [expandedTasks, fetchData, setTasks, formatTask]);

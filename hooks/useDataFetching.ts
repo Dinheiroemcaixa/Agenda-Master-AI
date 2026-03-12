@@ -67,6 +67,7 @@ export function useDataFetching({
         tasksQuery.order('order', { ascending: true }).order('dueDate', { ascending: true }),
       ]);
 
+      console.log(`[FetchData] Brutos: ${tData?.length || 0} tarefas.`);
       const allTasks = (tData || []).map(formatTask);
 
       let fTasks = allTasks;
@@ -77,10 +78,14 @@ export function useDataFetching({
           (t.completedAt && t.completedAt >= parseLocalDate(range.start))
         );
       }
+      
+      console.log(`[FetchData] Após filtro: ${fTasks.length} tarefas. Concluídas: ${fTasks.filter(t => t.completed).length}`);
+      if (fTasks.some(t => t.completed)) {
+          console.table(fTasks.filter(t => t.completed).map(t => ({ id: t.id, title: t.title, status: t.status, date: t.dueDate })));
+      }
 
       setTasks(prev => {
         const tempTasks = prev.filter(t => t.id.startsWith('temp_'));
-        // Mescla: pega o que veio do banco e mantém o que ainda é temporário localmente
         return [...fTasks, ...tempTasks];
       });
       setUsers((uData || []).map((u: any) => formatUser(u, false)));

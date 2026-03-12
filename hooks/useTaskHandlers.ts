@@ -149,14 +149,15 @@ export function useTaskHandlers({
     if (!t) return;
 
     const now = new Date();
+    const tempId = `temp_${taskId}`;
     
-    // 1. Atualização Otimista Total
+    // 1. Atualização Otimista
     setTasks(prev => {
         const targetStatus: TaskStatus = 'COMPLETED';
         if (t.isVirtual) {
             const tempRealTask: Task = {
                 ...t,
-                id: `temp_${Date.now()}`, 
+                id: tempId, 
                 isVirtual: false,
                 completed: true,
                 status: targetStatus,
@@ -179,9 +180,14 @@ export function useTaskHandlers({
     try {
         if (t.isVirtual) {
             const { isVirtual, id: oldId, ...payload } = t;
+            // Salvar dueDate como string pura para evitar shift de timezone
+            const dbDueDate = t.dueDate ? toDateString(t.dueDate) : null;
+            
+            console.log("Inserindo tarefa virtual concluída:", { taskId, dbDueDate });
+            
             const { data, error } = await supabase.from('tasks').insert([{
                 ...payload,
-                dueDate: t.dueDate?.toISOString(),
+                dueDate: dbDueDate,
                 completed: true,
                 status: 'COMPLETED',
                 completion_type: type,
@@ -190,18 +196,20 @@ export function useTaskHandlers({
             }]).select();
             
             if (error) {
-                console.error("Erro ao converter tarefa virtual:", error);
-                alert("Erro ao salvar no banco (Tarefa Recorrente): " + error.message);
-                fetchData(true);
+                console.error("Erro Supabase (Insert):", error);
+                alert("Erro ao salvar: " + error.message);
+                setTasks(prev => prev.filter(x => x.id !== tempId));
             } else if (data) {
+                console.log("Sucesso ao inserir:", data[0].id);
                 const newTask = formatTask(data[0]);
                 setTasks(prev => {
-                    const withoutTemp = prev.filter(x => !x.id.startsWith('temp_'));
-                    if (withoutTemp.some(x => x.id === newTask.id)) return withoutTemp;
-                    return [...withoutTemp, newTask];
+                    const filtered = prev.filter(x => x.id !== tempId);
+                    if (filtered.some(x => x.id === newTask.id)) return filtered;
+                    return [...filtered, newTask];
                 });
             }
         } else {
+            console.log("Atualizando tarefa real:", taskId);
             const { error } = await supabase.from('tasks').update({ 
                 completed: true, 
                 status: 'COMPLETED', 
@@ -210,13 +218,13 @@ export function useTaskHandlers({
             }).eq('id', taskId);
             
             if (error) {
-                console.error("Erro ao atualizar tarefa no banco:", error);
-                alert("Erro ao salvar no banco: " + error.message);
+                console.error("Erro Supabase (Update):", error);
+                alert("Erro ao atualizar: " + error.message);
                 fetchData(true);
             }
         }
     } catch (err: any) {
-        console.error("Erro inesperado ao concluir tarefa:", err);
+        console.error("Exceção em confirmCompletion:", err);
         alert("Erro inesperado: " + (err.message || String(err)));
         fetchData(true);
     }
@@ -230,13 +238,14 @@ export function useTaskHandlers({
     const newCompleted = s === 'COMPLETED';
     const now = new Date();
     const completedAt = newCompleted ? now : null;
+    const tempId = `temp_${id}`;
 
     // Atualização Otimista Total
     setTasks(prev => {
         if (t.isVirtual) {
             const tempRealTask: Task = {
                 ...t,
-                id: `temp_${Date.now()}`,
+                id: tempId,
                 isVirtual: false,
                 status: s,
                 completed: newCompleted,
@@ -252,9 +261,13 @@ export function useTaskHandlers({
     try {
         if (t.isVirtual) {
             const { isVirtual, id: oldId, ...payload } = t;
+            const dbDueDate = t.dueDate ? toDateString(t.dueDate) : null;
+            
+            console.log("Movendo tarefa virtual no Kanban:", { id, s, dbDueDate });
+
             const { data, error } = await supabase.from('tasks').insert([{
                 ...payload,
-                dueDate: t.dueDate?.toISOString(),
+                dueDate: dbDueDate,
                 status: s,
                 completed: newCompleted,
                 completedAt: completedAt?.toISOString(),
@@ -262,18 +275,19 @@ export function useTaskHandlers({
             }]).select();
 
             if (error) {
-                console.error("Erro ao converter virtual no status:", error);
-                alert("Erro ao salvar status (Tarefa Recorrente): " + error.message);
-                fetchData(true);
+                console.error("Erro Supabase (Move Virtual):", error);
+                alert("Erro ao salvar: " + error.message);
+                setTasks(prev => prev.filter(x => x.id !== tempId));
             } else if (data) {
                 const newTask = formatTask(data[0]);
                 setTasks(prev => {
-                    const withoutTemp = prev.filter(x => !x.id.startsWith('temp_'));
-                    if (withoutTemp.some(x => x.id === newTask.id)) return withoutTemp;
-                    return [...withoutTemp, newTask];
+                    const filtered = prev.filter(x => x.id !== tempId);
+                    if (filtered.some(x => x.id === newTask.id)) return filtered;
+                    return [...filtered, newTask];
                 });
             }
         } else {
+            console.log("Movendo tarefa real no Kanban:", id, s);
             const { error } = await supabase.from('tasks').update({ 
                 status: s, 
                 completed: newCompleted,
@@ -281,13 +295,13 @@ export function useTaskHandlers({
             }).eq('id', id);
             
             if (error) {
-                console.error("Erro ao atualizar status no banco:", error);
+                console.error("Erro Supabase (Move Real):", error);
                 alert("Erro ao atualizar status: " + error.message);
                 fetchData(true);
             }
         }
     } catch (err: any) {
-        console.error("Erro ao atualizar status:", err);
+        console.error("Exceção em handleUpdateStatus:", err);
         alert("Erro ao atualizar status: " + (err.message || String(err)));
         fetchData(true);
     }

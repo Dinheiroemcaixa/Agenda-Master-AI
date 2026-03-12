@@ -75,22 +75,42 @@ export function useDataFetching({
           tData = data || [];
           console.log("[FetchData] Modo fetchAll ativado. Itens carregados:", tData.length);
       } else {
-          // Busca em duas etapas para garantir que pegamos tudo que importa sem estourar 1000 (ou chegando perto com segurança)
-          const [openTasks, completedInRange] = await Promise.all([
-              supabase.from('tasks').select('*').eq('completed', false).order('order', { ascending: true }).limit(5000),
+          const todayStr = toDateString(new Date());
+          // Busca em várias frentes para garantir consistência sem estourar 5000:
+          // 1. Abertas
+          // 2. Concluídas no range
+          // 3. Maestras de recorrência (essencial para expansão virtual)
+          // 4. Concluídas hoje (essencial para dashboard stats)
+          const [openTasks, completedInRange, recurrenceMasters, completedToday] = await Promise.all([
+              supabase.from('tasks').select('*').eq('completed', false).order('order', { ascending: true }).limit(2000),
               supabase.from('tasks')
                 .select('*')
                 .eq('completed', true)
                 .gte('dueDate', rangeStartStr)
                 .lte('dueDate', rangeEndStr)
-                .order('dueDate', { ascending: true })
-                .limit(5000)
+                .limit(1000),
+              supabase.from('tasks')
+                .select('*')
+                .neq('recurrence', 'NONE')
+                .limit(1000),
+              supabase.from('tasks')
+                .select('*')
+                .eq('completed', true)
+                .gte('completedAt', todayStr)
+                .limit(500)
           ]);
           
-          tData = [...(openTasks.data || []), ...(completedInRange.data || [])];
-          if (tData.length > 0) {
-              console.log("[FetchData] Chaves detectadas no objeto raw:", Object.keys(tData[0]));
-          }
+          // Unificar e remover duplicatas por ID
+          const combined = [
+              ...(openTasks.data || []), 
+              ...(completedInRange.data || []),
+              ...(recurrenceMasters.data || []),
+              ...(completedToday.data || [])
+          ];
+          
+          const uniqueMap = new Map();
+          combined.forEach(t => uniqueMap.set(t.id, t));
+          tData = Array.from(uniqueMap.values());
       }
 
       console.log(`[FetchData] Brutos: ${tData?.length || 0} tarefas.`);

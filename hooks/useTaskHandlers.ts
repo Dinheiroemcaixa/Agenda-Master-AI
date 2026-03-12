@@ -97,15 +97,19 @@ export function useTaskHandlers({
 
     result.forEach(t => {
       const d = t.dueDate instanceof Date ? t.dueDate : (t.dueDate ? parseLocalDate(t.dueDate as any) : null);
-      const key = (t.recurrenceGroupId && d) ? `${t.recurrenceGroupId}_${toDateString(d)}` : t.id;
+      // Normalizar ID removendo prefixo temporário para o agrupamento
+      const baseId = t.id.replace('temp_', '');
+      const key = (t.recurrenceGroupId && d) ? `${t.recurrenceGroupId}_${toDateString(d)}` : baseId;
       
       if (!seenKeys.has(key)) {
         seenKeys.set(key, t);
         finalResult.push(t);
       } else {
         const existing = seenKeys.get(key)!;
-        // Se a nova tarefa é REAL e a existente é VIRTUAL, trocamos
-        if (existing.isVirtual && !t.isVirtual) {
+        // Preferência: Real > Virtual, Temp > DB
+        const isNewPreferable = (!t.isVirtual && existing.isVirtual) || (t.id.startsWith('temp_') && !existing.id.startsWith('temp_'));
+        
+        if (isNewPreferable) {
           seenKeys.set(key, t);
           const idx = finalResult.findIndex(x => x.id === existing.id);
           if (idx !== -1) finalResult[idx] = t;
@@ -133,22 +137,54 @@ export function useTaskHandlers({
     const t = expandedTasks.find(x => x.id === id);
     if (!t) return;
 
-    if (t.isVirtual) {
-      const { isVirtual, id: oldId, ...payload } = t;
-      const { data, error } = await supabase.from('tasks').insert([{
-        ...payload,
-        dueDate: t.dueDate ? toDateString(t.dueDate) : null,
-        isStarred: !t.isStarred,
-        subtasks: JSON.stringify(t.subtasks || []),
-      }]).select();
-      if (error) console.error("Erro ao favoritar virtual:", error);
-      else if (data) setTasks(prev => [...prev, formatTask(data[0])]);
-    } else {
-      const { error } = await supabase.from('tasks').update({ isStarred: !t.isStarred }).eq('id', id);
-      if (error) console.error("Erro ao favoritar:", error);
-      else setTasks(prev => prev.map(task => task.id === id ? { ...task, isStarred: !task.isStarred } : task));
+    const tempId = `temp_${id}`;
+
+    setTasks(prev => {
+      if (t.isVirtual) {
+        const optimisticTask: Task = {
+            ...t,
+            id: tempId, 
+            isVirtual: false,
+            isStarred: !t.isStarred
+        };
+        return [...prev, optimisticTask];
+      }
+      return prev.map(task => task.id === id ? { ...task, id: tempId, isStarred: !task.isStarred } : task);
+    });
+
+    try {
+      if (t.isVirtual) {
+        const { isVirtual, id: oldId, ...payload } = t;
+        const { data, error } = await supabase.from('tasks').insert([{
+            ...payload,
+            isStarred: !t.isStarred,
+            subtasks: JSON.stringify(t.subtasks || []),
+            dueDate: t.dueDate ? toDateString(t.dueDate) : null
+        }]).select();
+        if (error) {
+            console.error("Error toggling star (virtual):", error);
+            alert("Erro ao favoritar virtual: " + error.message);
+            setTasks(prev => prev.filter(x => x.id !== tempId));
+        } else if (data) {
+            const nt = formatTask(data[0]);
+            setTasks(prev => prev.map(task => task.id === tempId ? nt : task));
+        }
+      } else {
+        const { error } = await supabase.from('tasks').update({ isStarred: !t.isStarred }).eq('id', id);
+        if (error) {
+            console.error("Error toggling star (real):", error);
+            alert("Erro ao favoritar: " + error.message);
+            fetchData(true);
+        } else {
+            setTasks(prev => prev.map(task => task.id === tempId ? { ...task, id: id } : task));
+        }
+      }
+    } catch (err: any) {
+      console.error("Error toggling star:", err);
+      alert("Erro inesperado ao favoritar: " + (err.message || String(err)));
+      fetchData(true);
     }
-  }, [expandedTasks, formatTask, setTasks]);
+  }, [expandedTasks, formatTask, fetchData, setTasks]);
 
   // ── Toggle Task (marcar/desmarcar) ──
   const handleToggleTask = useCallback(async (id: string) => {
@@ -156,13 +192,20 @@ export function useTaskHandlers({
     if (!t) return;
     
     if (t.completed) {
-      setTasks(prev => prev.map(task => task.id === id ? { ...task, completed: false, status: 'OPEN', completion_type: 'normal', completedAt: undefined } : task));
+      const tempId = `temp_${id}`;
+      const optimisticTask: Task = { ...t, id: tempId, completed: false, status: 'OPEN', completion_type: 'normal', completedAt: undefined };
+      
+      setTasks(prev => prev.map(task => task.id === id ? optimisticTask : task));
+      
       try {
         const { error } = await supabase.from('tasks').update({ completed: false, status: 'OPEN', completion_type: 'normal', completedAt: null }).eq('id', id);
         if (error) {
             console.error("Erro ao desmarcar tarefa:", error);
             alert("Erro ao desmarcar tarefa no banco: " + error.message);
             fetchData(true);
+        } else {
+            // Sucesso: voltamos o ID ao normal (será atualizado pelo próximo fetchData mas já marcamos localmente)
+            setTasks(prev => prev.map(task => task.id === tempId ? { ...task, id: id } : task));
         }
       } catch (err: any) {
         console.error("Erro ao desmarcar tarefa:", err);
@@ -186,27 +229,21 @@ export function useTaskHandlers({
     // 1. Atualização Otimista
     setTasks(prev => {
         const targetStatus: TaskStatus = 'COMPLETED';
+        const optimisticTask: Task = { 
+            ...t, 
+            id: tempId, 
+            isVirtual: false, 
+            completed: true, 
+            status: targetStatus, 
+            completion_type: type, 
+            completedAt: now 
+        };
+
         if (t.isVirtual) {
-            const tempRealTask: Task = {
-                ...t,
-                id: tempId, 
-                isVirtual: false,
-                completed: true,
-                status: targetStatus,
-                completion_type: type,
-                completedAt: now
-            };
-            return [...prev, tempRealTask];
+            return [...prev, optimisticTask];
         }
-        return prev.map(task => 
-            task.id === taskId ? { 
-                ...task, 
-                completed: true, 
-                status: targetStatus, 
-                completion_type: type, 
-                completedAt: now 
-            } : task
-        );
+        // Para tarefas reais, SUBSTITUÍMOS a versão antiga pela temp_ para lock de sync
+        return prev.map(task => task.id === taskId ? optimisticTask : task);
     });
 
     try {
@@ -253,6 +290,9 @@ export function useTaskHandlers({
                 console.error("Erro Supabase (Update):", error);
                 alert("Erro ao atualizar: " + error.message);
                 fetchData(true);
+            } else {
+                // Sucesso: Volta o ID ao normal
+                setTasks(prev => prev.map(task => task.id === tempId ? { ...task, id: taskId } : task));
             }
         }
     } catch (err: any) {
@@ -274,20 +314,20 @@ export function useTaskHandlers({
 
     // Atualização Otimista Total
     setTasks(prev => {
+        const optimisticTask: Task = {
+            ...t,
+            id: tempId,
+            isVirtual: false,
+            status: s,
+            completed: newCompleted,
+            completedAt: completedAt || undefined
+        };
+
         if (t.isVirtual) {
-            const tempRealTask: Task = {
-                ...t,
-                id: tempId,
-                isVirtual: false,
-                status: s,
-                completed: newCompleted,
-                completedAt: completedAt || undefined
-            };
-            return [...prev, tempRealTask];
+            return [...prev, optimisticTask];
         }
-        return prev.map(task => 
-            task.id === id ? { ...task, status: s, completed: newCompleted, completedAt: completedAt || undefined } : task
-        );
+        // Lock de sync para tarefas reais
+        return prev.map(task => task.id === id ? optimisticTask : task);
     });
 
     try {
@@ -327,11 +367,14 @@ export function useTaskHandlers({
             }).eq('id', id);
             
             if (error) {
-                console.error("Erro Supabase (Move Real):", error);
-                alert("Erro ao atualizar status: " + error.message);
-                fetchData(true);
-            }
+            console.error("Erro Supabase (UpdateStatus):", error);
+            alert("Erro ao atualizar status: " + error.message);
+            fetchData(true);
+        } else {
+            // Sucesso: Volta o ID ao normal se não for virtual transformado
+            setTasks(prev => prev.map(task => task.id === tempId ? { ...task, id: id } : task));
         }
+    }
     } catch (err: any) {
         console.error("Exceção em handleUpdateStatus:", err);
         alert("Erro ao atualizar status: " + (err.message || String(err)));
@@ -444,19 +487,23 @@ export function useTaskHandlers({
 
       if (virtualUpdates.length > 0) {
         for (const task of virtualUpdates) {
+          const tempId = `temp_${task.id}`;
           const { isVirtual, id: oldId, ...payload } = task;
           const { data, error } = await supabase.from('tasks').insert([{
             ...payload,
             dueDate: task.dueDate ? toDateString(task.dueDate) : null,
             subtasks: JSON.stringify(task.subtasks || []),
           }]).select();
-          if (error) console.error("Error inserting virtual task:", error);
+          if (error) {
+              console.error("Error inserting virtual task:", error);
+              setTasks(prev => prev.filter(t => t.id !== tempId));
+          }
           if (data) {
             const realTask = formatTask(data[0]);
             setTasks(prev => {
-              const exists = prev.some(t => t.id === realTask.id);
-              if (exists) return prev.filter(t => t.id !== task.id);
-              return prev.map(t => t.id === task.id ? realTask : t);
+              const filtered = prev.filter(t => t.id !== tempId);
+              if (filtered.some(t => t.id === realTask.id)) return filtered;
+              return [...filtered, realTask];
             });
           }
         }
@@ -476,9 +523,13 @@ export function useTaskHandlers({
       st.id === subtaskId ? { ...st, completed: !st.completed } : st
     );
 
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, subtasks: newSubtasks } : t));
+    const tempId = `temp_${taskId}`;
+    const optimisticTask: Task = { ...task, id: tempId, subtasks: newSubtasks, isVirtual: false };
+
+    setTasks(prev => prev.map(t => t.id === taskId ? optimisticTask : t));
+    
     if (viewingTask && viewingTask.id === taskId) {
-      setViewingTask({ ...viewingTask, subtasks: newSubtasks });
+      setViewingTask(optimisticTask);
     }
 
     try {
@@ -490,10 +541,14 @@ export function useTaskHandlers({
           subtasks: JSON.stringify(newSubtasks),
         }]).select();
         if (error) throw error;
-        if (data) setTasks(prev => [...prev, formatTask(data[0])]);
+        if (data) {
+            const nt = formatTask(data[0]);
+            setTasks(prev => prev.map(t => t.id === tempId ? nt : t));
+        }
       } else {
         const { error } = await supabase.from('tasks').update({ subtasks: JSON.stringify(newSubtasks) }).eq('id', taskId);
         if (error) throw error;
+        setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: taskId } : t));
       }
     } catch (err) {
       console.error("Erro ao atualizar subtarefa:", err);
@@ -506,7 +561,9 @@ export function useTaskHandlers({
     const task = expandedTasks.find(t => t.id === taskId);
     if (!task) return;
 
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, userId: newUserId, isVirtual: false } : t));
+    const tempId = `temp_${taskId}`;
+    const optimisticTask: Task = { ...task, id: tempId, userId: newUserId, isVirtual: false };
+    setTasks(prev => prev.map(t => t.id === taskId ? optimisticTask : t));
 
     try {
       if (task.isVirtual) {
@@ -520,11 +577,12 @@ export function useTaskHandlers({
         if (error) throw error;
         if (data) {
           const realTask = formatTask(data[0]);
-          setTasks(prev => prev.map(t => t.id === taskId ? realTask : t));
+          setTasks(prev => prev.map(t => t.id === tempId ? realTask : t));
         }
       } else {
         const { error } = await supabase.from('tasks').update({ userId: newUserId }).eq('id', taskId);
         if (error) throw error;
+        setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: taskId } : t));
       }
       fetchData(true);
     } catch (err) {

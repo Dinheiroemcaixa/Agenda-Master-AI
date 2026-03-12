@@ -7,18 +7,19 @@ export const parseLocalDate = (dateInput: string | Date | undefined): Date => {
   if (!dateInput) return new Date();
   if (dateInput instanceof Date) return dateInput;
   
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-    const [y, m, d] = dateInput.split('-').map(Number);
-    return new Date(y, m - 1, d);
-  }
-  
-  if (dateInput.includes('T')) {
-    const datePart = dateInput.split('T')[0];
-    const [y, m, d] = datePart.split('-').map(Number);
+  // Tenta extrair a parte YYYY-MM-DD (funciona para ISO, datas puras e formatos de timestamp de banco)
+  const dateMatch = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dateMatch) {
+    const [_, y, m, d] = dateMatch.map(Number);
+    // Cria no fuso local às 00:00:00
     return new Date(y, m - 1, d);
   }
 
-  return new Date(dateInput);
+  // Fallback para o construtor nativo se o formato for exótico
+  const fallbackDate = new Date(dateInput);
+  // Se for um objeto Date válido mas resultou em shift, tentamos normalizar
+  // Mas o regex acima deve capturar 99% dos casos do Supabase
+  return fallbackDate;
 };
 
 export const toDateString = (date: Date) => {

@@ -86,7 +86,12 @@ export function useDataFetching({
 
       setTasks(prev => {
         const tempTasks = prev.filter(t => t.id.startsWith('temp_'));
-        return [...fTasks, ...tempTasks];
+        const tempOriginalIds = new Set(tempTasks.map(t => t.id.replace('temp_', '')));
+        
+        // Filtra as tarefas do banco: remove aquelas que têm uma versão "temp_" ativa localmente
+        const filteredDBTasks = fTasks.filter(t => !tempOriginalIds.has(t.id));
+        
+        return [...filteredDBTasks, ...tempTasks];
       });
       setUsers((uData || []).map((u: any) => formatUser(u, false)));
 

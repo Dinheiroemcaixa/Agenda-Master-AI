@@ -405,7 +405,10 @@ export default function App() {
     showCompleted,
     currentUser,
     onOpenAddTask: () => setIsTaskModalOpen(true),
-    onToggleTask: handleToggleTask,    onEditTask: (t: Task) => { setViewingTask(t); setIsTaskModalOpen(true); },
+    onToggleTask: handleToggleTask,
+    onUpdateStatus: handleUpdateStatus,
+    onDeleteTask: handleDelete,
+    onEditTask: (t: Task) => { setViewingTask(t); setIsTaskModalOpen(true); },
     onViewTask: (t: Task) => { setViewingTask(t); setIsDetailsModalOpen(true); },
     onToggleStar: handleToggleStar,
     onChangeOrder: handleChangeOrder,
@@ -850,42 +853,82 @@ export default function App() {
         onSave={async (d) => { 
           try {
             if (viewingTask) {
-              if (viewingTask.isVirtual) {
-                const { isVirtual, id: oldId, ...payload } = viewingTask;
-                const { data, error } = await supabase.from('tasks').insert([{
-                  ...payload,
-                  title: d.title, description: d.description,
-                  dueDate: d.dueDate.toISOString(), userId: d.userId, type: d.type,
-                  subtasks: JSON.stringify(d.subtasks), recurrence: d.recurrence,
-                  recurrenceRule: d.recurrenceRule,
-                  recurrenceEndDate: d.recurrenceEndDate ? d.recurrenceEndDate.toISOString() : null,
-                  startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
-                }]).select();
-                if (error) throw error;
-                if (data) {
+              const tempId = `temp_${viewingTask.id}`;
+              
+              // 1. Decidir modo de edição para tarefas recorrentes
+              let editMode: 'SINGLE' | 'SERIES' = 'SINGLE';
+              if (viewingTask.recurrence !== 'NONE' || viewingTask.recurrenceGroupId) {
+                const choice = window.confirm(
+                  "Esta é uma tarefa recorrente.\n\n" +
+                  "Clique em OK para alterar TODA A SÉRIE.\n" +
+                  "Clique em CANCELAR para alterar APENAS ESTA TAREFA."
+                );
+                if (choice) editMode = 'SERIES';
+              }
+
+              // 2. Atualização Otimista com Proteção
+              const updatedTaskLocally = { ...viewingTask, ...d, id: tempId, isVirtual: false, subtasks: d.subtasks };
+              setTasks(prev => [...prev.filter(t => t.id !== viewingTask.id), updatedTaskLocally]);
+
+              if (editMode === 'SINGLE') {
+                if (viewingTask.isVirtual) {
+                  const { isVirtual, id: oldId, ...payload } = viewingTask;
+                  const { data, error } = await supabase.from('tasks').insert([{
+                    ...payload,
+                    title: d.title, description: d.description,
+                    dueDate: toDateString(d.dueDate), userId: d.userId, type: d.type,
+                    subtasks: JSON.stringify(d.subtasks), recurrence: 'NONE',
+                    recurrenceRule: null, recurrenceEndDate: null,
+                    startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
+                  }]).select();
+                  if (error) throw error;
+                  if (data) {
                     const nt = formatTask(data[0]);
-                    setTasks(prev => [...prev.filter(x => x.id !== viewingTask.id), nt]);
+                    setTasks(prev => [...prev.filter(x => x.id !== tempId && x.id !== viewingTask.id), nt]);
+                  }
+                } else {
+                  const { error } = await supabase.from('tasks').update({
+                    title: d.title, description: d.description,
+                    dueDate: toDateString(d.dueDate), userId: d.userId, type: d.type,
+                    subtasks: JSON.stringify(d.subtasks),
+                    startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
+                  }).eq('id', viewingTask.id);
+                  if (error) throw error;
+                  setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: viewingTask.id } : t));
                 }
               } else {
+                // MODO SERIES: Atualiza o mestre/grupo
+                const groupId = viewingTask.recurrenceGroupId;
+                if (!groupId) {
+                    alert("Erro: Grupo de recorrência não encontrado.");
+                    fetchData(true);
+                    return;
+                }
+
+                // Atualizar o registro mestre (pode ser o próprio viewingTask ou outro)
                 const { error } = await supabase.from('tasks').update({
                   title: d.title, description: d.description,
-                  dueDate: d.dueDate.toISOString(), userId: d.userId, type: d.type,
+                  userId: d.userId, type: d.type,
                   subtasks: JSON.stringify(d.subtasks), recurrence: d.recurrence,
                   recurrenceRule: d.recurrenceRule,
-                  recurrenceEndDate: d.recurrenceEndDate ? d.recurrenceEndDate.toISOString() : null,
+                  recurrenceEndDate: d.recurrenceEndDate ? toDateString(d.recurrenceEndDate) : null,
                   startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
-                }).eq('id', viewingTask.id);
+                }).eq('recurrenceGroupId', groupId); // Atualiza todos do grupo ou apenas o mestre? 
+                // Na nossa lógica de expansão, o master é quem gera. Vamos atualizar todos do grupo que não foram concluídos/modificados?
+                // O mais simples e seguro para o sistema atual é atualizar todos os registros reais do grupo.
+                
                 if (error) throw error;
-                setTasks(prev => prev.map(t => t.id === viewingTask.id ? { ...t, ...d, subtasks: d.subtasks } : t));
+                fetchData(true);
               }
             } else {
+              // CRIAÇÃO NOVA
               const gId = d.recurrence !== 'NONE' ? `series_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : null;
               const payload = { 
                 title: d.title, description: d.description, completed: false, 
-                dueDate: d.dueDate.toISOString(), userId: d.userId || currentUser.id, 
+                dueDate: toDateString(d.dueDate), userId: d.userId || currentUser.id, 
                 recurrence: d.recurrence, recurrenceRule: d.recurrenceRule,
                 recurrenceGroupId: gId,
-                recurrenceEndDate: d.recurrenceEndDate ? d.recurrenceEndDate.toISOString() : null,
+                recurrenceEndDate: d.recurrenceEndDate ? toDateString(d.recurrenceEndDate) : null,
                 status: 'OPEN', completion_type: 'normal', type: d.type,
                 startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
                 subtasks: JSON.stringify(d.subtasks),
@@ -894,15 +937,15 @@ export default function App() {
               if (error) throw error;
               if (data) {
                   const nt = formatTask(data[0]);
-                  setTasks(prev => [...prev, nt]);
+                  setTasks(prev => [...prev.filter(x => x.id !== nt.id), nt]);
               }
             }
-            fetchData(true); // Chamada não-bloqueante (sem await) para sincronizar se necessário
+            setIsTaskModalOpen(false);
+            setViewingTask(null);
           } catch (err: any) {
             console.error("Erro ao salvar:", err);
-            alert("Erro ao salvar no banco: " + (err.message || String(err)));
+            alert("Erro ao salvar: " + (err.message || String(err)));
             fetchData(true);
-            throw err;
           }
         }} 
         users={processedUsers}

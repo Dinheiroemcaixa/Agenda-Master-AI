@@ -105,7 +105,7 @@ export function useTaskHandlers({
       const { isVirtual, id: oldId, ...payload } = t;
       const { data, error } = await supabase.from('tasks').insert([{
         ...payload,
-        dueDate: t.dueDate?.toISOString(),
+        dueDate: t.dueDate ? toDateString(t.dueDate) : null,
         isStarred: !t.isStarred,
         subtasks: JSON.stringify(t.subtasks || []),
       }]).select();
@@ -330,7 +330,7 @@ export function useTaskHandlers({
         const { isVirtual, id: oldId, ...payload } = taskToDelete;
         const { data, error } = await supabase.from('tasks').insert([{
           ...payload,
-          dueDate: taskToDelete.dueDate?.toISOString(),
+          dueDate: taskToDelete.dueDate ? toDateString(taskToDelete.dueDate) : null,
           status: 'DELETED',
           subtasks: JSON.stringify(taskToDelete.subtasks || []),
         }]).select();
@@ -415,7 +415,7 @@ export function useTaskHandlers({
           const { isVirtual, id: oldId, ...payload } = task;
           const { data, error } = await supabase.from('tasks').insert([{
             ...payload,
-            dueDate: task.dueDate?.toISOString(),
+            dueDate: task.dueDate ? toDateString(task.dueDate) : null,
             subtasks: JSON.stringify(task.subtasks || []),
           }]).select();
           if (error) console.error("Error inserting virtual task:", error);
@@ -454,7 +454,7 @@ export function useTaskHandlers({
         const { isVirtual, id: oldId, ...payload } = task;
         const { data, error } = await supabase.from('tasks').insert([{
           ...payload,
-          dueDate: task.dueDate?.toISOString(),
+          dueDate: task.dueDate ? toDateString(task.dueDate) : null,
           subtasks: JSON.stringify(newSubtasks),
         }]).select();
         if (error) throw error;
@@ -482,7 +482,7 @@ export function useTaskHandlers({
         const { data, error } = await supabase.from('tasks').insert([{
           ...payload,
           userId: newUserId,
-          dueDate: task.dueDate?.toISOString(),
+          dueDate: task.dueDate ? toDateString(task.dueDate) : null,
           subtasks: JSON.stringify(task.subtasks || []),
         }]).select();
         if (error) throw error;

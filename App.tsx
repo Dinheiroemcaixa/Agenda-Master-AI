@@ -237,9 +237,12 @@ export default function App() {
       
       // Aplicar filtro de data se não for "all" e não estiver no calendário
       if (listDateFilter !== 'all' && t.dueDate) {
-        const tDateStr = toDateString(new Date(t.dueDate));
-        if (filterStart && filterEnd) {
-          if (tDateStr < filterStart || tDateStr > filterEnd) return false;
+        const isDashboardSpecialFilter = activePage === 'dashboard' && (dashboardFilter === 'delayed' || dashboardFilter === 'completed');
+        if (!isDashboardSpecialFilter) {
+          const tDateStr = toDateString(new Date(t.dueDate));
+          if (filterStart && filterEnd) {
+            if (tDateStr < filterStart || tDateStr > filterEnd) return false;
+          }
         }
       }
 

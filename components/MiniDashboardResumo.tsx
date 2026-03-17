@@ -3,17 +3,19 @@ import React from 'react';
 import { AlertCircle, CheckCircle2, ListChecks } from 'lucide-react';
 
 interface MiniDashboardResumoProps {
+  delayedCount: number;
   completedCount: number;
   totalCount: number;
-  activeFilter: 'all' | 'completed';
-  onFilterChange: (filter: 'all' | 'completed') => void;
+  activeFilter: 'all' | 'delayed' | 'completed';
+  onFilterChange: (filter: 'all' | 'delayed' | 'completed') => void;
 }
 
 export const MiniDashboardResumo: React.FC<MiniDashboardResumoProps> = ({
   completedCount,
   totalCount,
   activeFilter,
-  onFilterChange
+  onFilterChange,
+  delayedCount
 }) => {
   return (
     <div className="px-1 mb-6 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -22,7 +24,7 @@ export const MiniDashboardResumo: React.FC<MiniDashboardResumoProps> = ({
         <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
       </p>
       
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         {/* Card Total Criadas */}
         <button
           onClick={() => onFilterChange('all')}
@@ -43,6 +45,29 @@ export const MiniDashboardResumo: React.FC<MiniDashboardResumoProps> = ({
           </span>
           <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${activeFilter === 'all' ? 'text-indigo-100' : 'text-slate-400'}`}>
             Total
+          </span>
+        </button>
+
+        {/* Card Em Atraso */}
+        <button
+          onClick={() => onFilterChange(activeFilter === 'delayed' ? 'all' : 'delayed')}
+          className={`group flex flex-col p-2.5 rounded-xl border transition-all duration-300 text-left relative overflow-hidden ${
+            activeFilter === 'delayed'
+              ? 'bg-rose-500 border-rose-400 shadow-lg shadow-rose-500/20'
+              : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-900/30'
+          }`}
+        >
+          <div className="flex justify-between items-start mb-1">
+            <AlertCircle 
+              size={12} 
+              className={activeFilter === 'delayed' ? 'text-white' : 'text-rose-500'} 
+            />
+          </div>
+          <span className={`text-lg font-black leading-none ${activeFilter === 'delayed' ? 'text-white' : 'text-slate-800 dark:text-white'}`}>
+            {delayedCount}
+          </span>
+          <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 ${activeFilter === 'delayed' ? 'text-rose-100' : 'text-slate-400'}`}>
+            Atraso
           </span>
         </button>
 

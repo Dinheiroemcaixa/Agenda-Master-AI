@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useRef, useState } from 'react';
 import { Task, User, TaskStatus, CompletionType } from '../types';
 import { supabase } from '../services/supabaseClient';
 import { toDateString, parseLocalDate, generateRecurrenceDates } from '../utils/dateUtils';
@@ -126,10 +126,58 @@ export function useTaskHandlers({
     const userTasks = expandedTasks.filter(t => t.userId === currentUser?.id);
     
     return { 
+      delayed: userTasks.filter(t => !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr).length,
       completed: userTasks.filter(t => t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr).length,
       total: userTasks.filter(t => !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) === todayStr).length,
     };
-  }, [expandedTasks, currentUser]);
+  }, [expandedTasks, currentUser?.id]);
+
+  const materializingRef = useRef<Set<string>>(new Set());
+
+  // Expert Sync Logic: Fisicalizar ocorrências atrasadas
+  useEffect(() => {
+    if (!currentUser) return;
+    
+    // Identificar tarefas virtuais que estão no passado e ainda não estão sendo processadas
+    const overdueVirtuals = expandedTasks.filter(t => 
+      t.id.startsWith('virtual_') && 
+      !materializingRef.current.has(t.id) &&
+      t.dueDate && 
+      toDateString(new Date(t.dueDate)) < toDateString(new Date()) &&
+      t.userId === currentUser.id
+    );
+
+    if (overdueVirtuals.length > 0) {
+      console.log(`[Sync] Fisicalizando ${overdueVirtuals.length} tarefas atrasadas...`);
+      
+      // Marcar como em processamento para evitar loops
+      overdueVirtuals.forEach(t => materializingRef.current.add(t.id));
+
+      const materializing = overdueVirtuals.map(vt => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { id, isVirtual, ...taskData } = vt as any;
+        return {
+          ...taskData,
+          status: 'OPEN',
+          completed: false,
+          assignedByMaster: true,
+          dueDate: vt.dueDate ? (vt.dueDate instanceof Date ? vt.dueDate.toISOString() : vt.dueDate) : null,
+          subtasks: typeof vt.subtasks === 'string' ? vt.subtasks : JSON.stringify(vt.subtasks || []),
+        };
+      });
+
+      // Inserir no banco
+      supabase.from('tasks').insert(materializing).then(({ error }) => {
+        if (error) {
+          console.error("Erro ao fisicalizar atrasos:", error);
+          // Opcional: remover do ref em caso de erro para tentar novamente
+          overdueVirtuals.forEach(t => materializingRef.current.delete(t.id));
+        } else {
+          fetchData(true); // Recarregar silenciosamente
+        }
+      });
+    }
+  }, [expandedTasks, currentUser, fetchData]);
 
   // ── Toggle Star ──
   const handleToggleStar = useCallback(async (id: string) => {

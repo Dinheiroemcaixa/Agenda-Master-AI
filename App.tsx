@@ -8,6 +8,7 @@ import { TaskDetailsModal } from './components/TaskDetailsModal';
 import { ChatView } from './components/ChatView';
 import { KanbanBoard } from './components/KanbanBoard';
 import { CalendarView } from './components/CalendarView';
+import { HistoryView } from './components/HistoryView';
 import { UserAvatar } from './components/UserAvatar';
 import { MiniDashboardResumo } from './components/MiniDashboardResumo';
 import { Task, User, UserRole, Message, Attachment, TaskStatus, CompletionType } from './types';
@@ -53,7 +54,7 @@ export default function App() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dashboardFilter, setDashboardFilter] = useState<'all' | 'completed'>('all');
+  const [dashboardFilter, setDashboardFilter] = useState<'all' | 'delayed' | 'completed'>('all');
   
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -242,6 +243,7 @@ export default function App() {
       }
 
       if (activePage === 'dashboard') {
+        if (dashboardFilter === 'delayed') return t.userId === currentUser?.id && !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr;
         if (dashboardFilter === 'completed') return t.userId === currentUser?.id && t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr;
         
         // Se houver um filtro de data específico (que não seja "all"), ignoramos o filtro de "hoje" padrão do dashboard
@@ -265,7 +267,7 @@ export default function App() {
     currentUser ? messages.filter(m => m.fromUserId === currentUser.id || m.toUserId === currentUser.id) : []
   , [messages, currentUser]);
 
-  const handleMiniDashboardFilter = (filter: 'all' | 'completed') => {
+  const handleMiniDashboardFilter = (filter: 'all' | 'delayed' | 'completed') => {
     setDashboardFilter(filter);
     setActivePage('dashboard');
     if (filter === 'completed') setShowCompleted(true);
@@ -459,6 +461,7 @@ export default function App() {
         {/* Navigation */}
         <nav className="p-4 space-y-1.5 flex-1 custom-scroll overflow-y-auto">
           <MiniDashboardResumo
+            delayedCount={dashboardStats.delayed}
             completedCount={dashboardStats.completed}
             totalCount={dashboardStats.total}
             activeFilter={dashboardFilter}
@@ -470,6 +473,7 @@ export default function App() {
             { id: 'dashboard', label: 'Minhas Tarefas', icon: <UserCheck size={20} />, onClick: () => { setActivePage('dashboard'); setDashboardFilter('all'); setActiveChatUserId(null); }, match: activePage === 'dashboard' && dashboardFilter === 'all' },
             { id: 'priority', label: 'Favoritos', icon: <Star size={20} />, onClick: () => { setActivePage('priority'); setActiveChatUserId(null); }, match: activePage === 'priority' },
             { id: 'meetings', label: 'Reuniões', icon: <Video size={20} />, onClick: () => { setActivePage('meetings'); setActiveChatUserId(null); }, match: activePage === 'meetings' },
+            { id: 'history', label: 'Histórico', icon: <BarChart3 size={20} />, onClick: () => { setActivePage('history'); setActiveChatUserId(null); }, match: activePage === 'history' },
           ].map(item => (
             <button
               key={item.id}
@@ -611,6 +615,13 @@ export default function App() {
             onSendMessage={handleSendMessage}
             roleLabels={ROLE_LABELS}
           />
+        ) : activePage === 'history' ? (
+          <HistoryView 
+            tasks={expandedTasks} 
+            users={processedUsers} 
+            currentUser={currentUser} 
+            onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }} 
+          />
         ) : activePage === 'team' ? (
           <div className="p-10">
             <h1 className="text-3xl font-black mb-6">Equipe</h1>
@@ -733,7 +744,7 @@ export default function App() {
                 </button>
 
                 {/* New Task Button */}
-                {((activePage === 'dashboard' && dashboardFilter !== 'completed') || activePage === 'priority' || activePage === 'meetings' || activePage === 'team') && (
+                {((activePage === 'dashboard' && dashboardFilter !== 'completed' && dashboardFilter !== 'delayed') || activePage === 'priority' || activePage === 'meetings' || activePage === 'team') && (
                   <button
                     onClick={() => setIsTaskModalOpen(true)}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 lg:px-8 py-2.5 lg:py-3.5 rounded-xl lg:rounded-2xl font-black uppercase tracking-widest text-[10px] lg:text-xs flex items-center gap-2 shadow-2xl shadow-indigo-600/30 transition-all active:scale-95 group"
@@ -758,7 +769,7 @@ export default function App() {
                       tasks={filteredTasks.filter(t => t.userId === user.id)}
                       hideHeaderIdentity={activePage !== 'team'}
                       pageContext={activePage}
-                      showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed'}
+                      showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed' && dashboardFilter !== 'delayed'}
                     />
                   </div>
                 ))}

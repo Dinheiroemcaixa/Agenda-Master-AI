@@ -68,7 +68,7 @@ export default function App() {
   const [dataRange, setDataRange] = useState<{ start: string; end: string }>(() => {
     const today = new Date();
     const start = new Date();
-    start.setDate(today.getDate() - 30);
+    start.setDate(today.getDate() - 180); // Expandido para 180 dias para ver atrasos antigos
     const plus365 = new Date();
     plus365.setDate(today.getDate() + 365);
     return { start: toDateString(start), end: toDateString(plus365) };

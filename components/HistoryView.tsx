@@ -164,7 +164,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ tasks, users, currentU
                  onChange={(e) => setUserFilter(e.target.value)}
                  className="bg-transparent text-xs font-bold uppercase tracking-tight outline-none flex-1 py-2 cursor-pointer dark:text-white"
                >
-                 <option value="all" className="dark:bg-slate-900">Todos Colaboradores</option>
+                 <option value="all" className="dark:bg-slate-900">Usuário: Todos</option>
                  {users.map(u => (
                    <option key={u.id} value={u.id} className="dark:bg-slate-900">{u.name}</option>
                  ))}
@@ -180,9 +180,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ tasks, users, currentU
                onChange={(e) => setStatusFilter(e.target.value as any)}
                className="bg-transparent text-xs font-bold uppercase tracking-tight outline-none flex-1 py-2 cursor-pointer dark:text-white"
              >
-               <option value="all">Status: Todos</option>
-               <option value="completed">Concluídas</option>
-               <option value="overdue">Em Atraso</option>
+               <option value="all" className="dark:bg-slate-900">Status: Todos</option>
+               <option value="completed" className="dark:bg-slate-900">Concluídas</option>
+               <option value="overdue" className="dark:bg-slate-900">Em Atraso</option>
              </select>
           </div>
         </div>

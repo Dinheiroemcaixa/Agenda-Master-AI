@@ -76,35 +76,33 @@ export function useDataFetching({
           console.log("[FetchData] Modo fetchAll ativado. Itens carregados:", tData.length);
       } else {
           const todayStr = toDateString(new Date());
-          const extendedStartStr = toDateString(new Date(new Date().setDate(new Date().getDate() - 90))); // 90 dias atrás
+          const extendedStartStr = toDateString(new Date(new Date().setDate(new Date().getDate() - 180))); // 180 dias atrás para garantir histórico
           
           // Busca em várias frentes para garantir consistência:
           const [openTasks, completedInRange, recurrenceGroups, completedToday] = await Promise.all([
-              // 1. Todas as tarefas abertas (limite maior)
-              supabase.from('tasks').select('*').eq('completed', false).order('order', { ascending: true }).limit(3000),
+              // 1. Todas as tarefas abertas (Sem limite restritivo de 1000)
+              supabase.from('tasks').select('*').eq('completed', false).order('order', { ascending: true }).limit(5000),
               
-              // 2. Tarefas concluídas no range estendido (cobrir atrasos longos)
+              // 2. Tarefas concluídas no range estendido (cobrir atrasos longos e histórico recente)
               supabase.from('tasks')
                 .select('*')
                 .eq('completed', true)
                 .gte('dueDate', extendedStartStr)
                 .lte('dueDate', rangeEndStr)
-                .limit(1000),
+                .limit(2000),
               
               // 3. Essencial: Todas as tarefas que pertencem a um grupo de recorrência
-              // Isso garante que se uma ocorrência foi concluída (mesmo há meses), ela será carregada
-              // e impedirá a criação de uma versão virtual "aberta".
               supabase.from('tasks')
                 .select('*')
                 .not('recurrenceGroupId', 'is', null)
-                .limit(2000),
+                .limit(3000),
                 
               // 4. Concluídas hoje
               supabase.from('tasks')
                 .select('*')
                 .eq('completed', true)
                 .gte('completedAt', todayStr)
-                .limit(500)
+                .limit(1000)
           ]);
           
           // Unificar e remover duplicatas por ID

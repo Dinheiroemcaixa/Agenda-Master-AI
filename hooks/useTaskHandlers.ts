@@ -47,12 +47,7 @@ export function useTaskHandlers({
       }
     });
 
-    if (tasks.length > 0) {
-        const completedWithGroup = tasks.filter(t => t.completed && t.recurrenceGroupId);
-        if (completedWithGroup.length > 0) {
-            console.log(`[ExpandedTasks] Encontradas ${completedWithGroup.length} tarefas reais concluídas com grupo.`);
-        }
-    }
+
 
     const recurrenceMasters = tasks.filter(t => t.recurrence && t.recurrence !== 'NONE' && t.recurrenceGroupId && t.status !== 'DELETED');
     
@@ -134,50 +129,9 @@ export function useTaskHandlers({
 
   const materializingRef = useRef<Set<string>>(new Set());
 
-  // Expert Sync Logic: Fisicalizar ocorrências atrasadas
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    // Identificar tarefas virtuais que estão no passado e ainda não estão sendo processadas
-    const overdueVirtuals = expandedTasks.filter(t => 
-      t.id.startsWith('virtual_') && 
-      !materializingRef.current.has(t.id) &&
-      t.dueDate && 
-      toDateString(new Date(t.dueDate)) < toDateString(new Date()) &&
-      t.userId === currentUser.id
-    );
-
-    if (overdueVirtuals.length > 0) {
-      console.log(`[Sync] Fisicalizando ${overdueVirtuals.length} tarefas atrasadas...`);
-      
-      // Marcar como em processamento para evitar loops
-      overdueVirtuals.forEach(t => materializingRef.current.add(t.id));
-
-      const materializing = overdueVirtuals.map(vt => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { id, isVirtual, ...taskData } = vt as any;
-        return {
-          ...taskData,
-          status: 'OPEN',
-          completed: false,
-          assignedByMaster: true,
-          dueDate: vt.dueDate ? (vt.dueDate instanceof Date ? vt.dueDate.toISOString() : vt.dueDate) : null,
-          subtasks: typeof vt.subtasks === 'string' ? vt.subtasks : JSON.stringify(vt.subtasks || []),
-        };
-      });
-
-      // Inserir no banco
-      supabase.from('tasks').insert(materializing).then(({ error }) => {
-        if (error) {
-          console.error("Erro ao fisicalizar atrasos:", error);
-          // Opcional: remover do ref em caso de erro para tentar novamente
-          overdueVirtuals.forEach(t => materializingRef.current.delete(t.id));
-        } else {
-          fetchData(true); // Recarregar silenciosamente
-        }
-      });
-    }
-  }, [expandedTasks, currentUser, fetchData]);
+  // Expert Sync Logic: REMOVIDA para evitar ressurreição de tarefas
+  // As tarefas recorrentes devem permanecer virtuais até que o usuário interaja com elas.
+  // Isso evita que tarefas concluídas reapareçam como em aberto devido a falhas de cache/sincronismo.
 
   // ── Toggle Star ──
   const handleToggleStar = useCallback(async (id: string) => {
@@ -299,7 +253,7 @@ export function useTaskHandlers({
             // Salvar dueDate como string pura para evitar shift de timezone
             const dbDueDate = t.dueDate ? toDateString(t.dueDate) : null;
             
-            console.log("Inserindo tarefa virtual concluída:", { taskId, dbDueDate });
+
             
             const { data, error } = await supabase.from('tasks').insert([{
                 ...payload,
@@ -316,7 +270,7 @@ export function useTaskHandlers({
                 alert("Erro ao salvar: " + error.message);
                 setTasks(prev => prev.filter(x => x.id !== tempId));
             } else if (data) {
-                console.log("Sucesso ao inserir:", data[0].id);
+
                 const newTask = formatTask(data[0]);
                 setTasks(prev => {
                     const filtered = prev.filter(x => x.id !== tempId);
@@ -325,7 +279,7 @@ export function useTaskHandlers({
                 });
             }
         } else {
-            console.log("Atualizando tarefa real:", taskId);
+
             const { error } = await supabase.from('tasks').update({ 
                 completed: true, 
                 status: 'COMPLETED', 

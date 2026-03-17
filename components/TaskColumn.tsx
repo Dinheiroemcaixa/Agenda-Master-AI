@@ -304,7 +304,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
       </div>
 
       {!isCollapsed && (
-          <div className="flex flex-col overflow-x-auto lg:overflow-x-visible custom-scroll">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <div className="min-w-[700px] lg:min-w-0 grid grid-cols-[50px_1fr_100px_100px_80px_120px_80px] lg:grid-cols-[60px_1fr_110px_110px_90px_140px_90px] gap-2 px-4 py-2 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-800/10">
                 <div className="text-[10px] font-black text-slate-400 uppercase text-center">OK</div>
                 <div className="text-[10px] font-black text-slate-400 uppercase px-2">{isMeetingContext ? 'Assunto / Pauta' : 'Tarefa / Descrição'}</div>
@@ -315,7 +315,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
                 <div className="text-[10px] font-black text-slate-400 uppercase text-right pr-8">Ações</div>
             </div>
 
-            <div className="min-w-[700px] lg:min-w-0">
+            <div className="flex-1 overflow-y-auto min-w-[700px] lg:min-w-0 custom-scroll pb-10">
               <DndContext 
                 sensors={sensors} 
                 collisionDetection={closestCenter} 

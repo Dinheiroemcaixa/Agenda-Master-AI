@@ -239,7 +239,7 @@ export default function App() {
       
       // Aplicar filtro de data se não for "all" e não estiver no calendário
       if (listDateFilter !== 'all' && t.dueDate) {
-        const isDashboardSpecialFilter = activePage === 'dashboard' && dashboardFilter === 'completed';
+        const isDashboardSpecialFilter = activePage === 'dashboard' && (dashboardFilter === 'completed' || dashboardFilter === 'delayed');
         if (!isDashboardSpecialFilter) {
           const tDateStr = toDateString(new Date(t.dueDate));
           if (filterStart && filterEnd) {
@@ -249,7 +249,10 @@ export default function App() {
       }
 
       if (activePage === 'dashboard') {
-        if (dashboardFilter === 'delayed') return !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr;
+        if (dashboardFilter === 'delayed') {
+          // Se o filtro for 'Atraso', ignoramos o listDateFilter e mostramos todos os atrasos reais do usuário
+          return !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr;
+        }
         if (dashboardFilter === 'completed') return t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr;
         
         // Se houver um filtro de data específico (que não seja "all"), ignoramos o filtro de "hoje" padrão do dashboard
@@ -628,20 +631,22 @@ export default function App() {
             onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }} 
           />
         ) : activePage === 'team' && isGlobalViewer ? (
-          <div className="p-10">
-            <h1 className="text-3xl font-black mb-6">Equipe</h1>
-            <div className="flex flex-wrap gap-6">
-              {displayUsers.map(user => (
-                <div key={user.id} className="w-full md:w-[400px] bg-white/80 dark:bg-slate-900/80 rounded-[40px] border border-white/40 dark:border-slate-800/40 shadow-xl backdrop-blur-md overflow-hidden mb-10 transition-all hover:shadow-2xl">
-                  <TaskColumn
-                    {...columnProps}
-                    user={user}
-                    tasks={filteredTasks.filter(t => t.userId === user.id)}
-                    hideHeaderIdentity={false}
-                    pageContext="team"
-                  />
-                </div>
-              ))}
+          <div className="p-4 sm:p-10 flex-1 flex flex-col min-h-0">
+            <h1 className="text-3xl font-black mb-6 flex-shrink-0">Equipe</h1>
+            <div className="flex-1 overflow-x-auto overflow-y-hidden pb-10">
+              <div className="flex gap-6 h-full items-start">
+                {displayUsers.map(user => (
+                  <div key={user.id} className="w-[350px] sm:w-[400px] flex-shrink-0 bg-white/80 dark:bg-slate-900/80 rounded-[40px] border border-white/40 dark:border-slate-800/40 shadow-xl backdrop-blur-md overflow-hidden transition-all hover:shadow-2xl flex flex-col max-h-[calc(100vh-250px)]">
+                    <TaskColumn
+                      {...columnProps}
+                      user={user}
+                      tasks={filteredTasks.filter(t => t.userId === user.id)}
+                      hideHeaderIdentity={false}
+                      pageContext="team"
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         ) : (

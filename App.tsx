@@ -258,7 +258,8 @@ export default function App() {
         // Se houver um filtro de data específico (que não seja "all"), ignoramos o filtro de "hoje" padrão do dashboard
         if (listDateFilter !== 'all') return true;
 
-        return t.dueDate && toDateString(new Date(t.dueDate)) === todayStr;
+        // REGRA MELHORADA: Dashboard 'all' mostra tarefas de HOJE + TODAS AS ATRASADAS pendentes
+        return !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) <= todayStr;
       }
       if (activePage === 'priority') return t.isStarred;
       if (activePage === 'meetings') return t.type === 'meeting';

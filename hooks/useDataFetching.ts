@@ -121,35 +121,43 @@ export function useDataFetching({
       }
 
       console.log(`[FetchData] Brutos: ${tData?.length || 0} tarefas.`);
-      const allTasks = (tData || []).map(formatTask);
+      const allTasks = (tData || []).map(t => {
+          try {
+              return formatTask(t);
+          } catch (e) {
+              console.error(`Erro ao formatar tarefa ${t?.id}:`, e);
+              return null;
+          }
+      }).filter(t => t !== null) as Task[];
  
       let fTasks = allTasks;
       // O filtro agora é feito no servidor para evitar o limite de 1000 linhas.
       // Não aplicamos mais filtro agressivo no frontend para não perder tarefas reais que bloqueiam as virtuais.
       
       console.log(`[FetchData] Após filtro: ${fTasks.length} tarefas. Concluídas: ${fTasks.filter(t => t.completed).length}`);
-      if (fTasks.length > 0) {
-          console.log("[FetchData] Top 30 tarefas:");
-          console.table(fTasks.slice(0, 30).map(t => ({
-              id: t.id.substring(0, 8),
-              title: t.title.substring(0, 20),
-              status: t.status,
-              completed: t.completed,
-              groupId: t.recurrenceGroupId?.substring(0, 8) || 'N/A',
-              dueDate: t.dueDate ? toDateString(t.dueDate) : 'N/A'
-          })));
+      if (fTasks.length > 0 && process.env.NODE_ENV === 'development') {
+          try {
+              console.log("[FetchData] Resumo de carregamento bem-sucedido.");
+          } catch (e) { /* silent */ }
       }
 
       setTasks(prev => {
-        const tempTasks = prev.filter(t => t.id.startsWith('temp_'));
+        const tempTasks = prev.filter(t => t.id && t.id.startsWith('temp_'));
         const tempOriginalIds = new Set(tempTasks.map(t => t.id.replace('temp_', '')));
         
         // Filtra as tarefas do banco: remove aquelas que têm uma versão "temp_" ativa localmente
-        const filteredDBTasks = fTasks.filter(t => !tempOriginalIds.has(t.id));
+        const filteredDBTasks = fTasks.filter(t => t && t.id && !tempOriginalIds.has(t.id));
         
         return [...filteredDBTasks, ...tempTasks];
       });
-      setUsers((uData || []).map((u: any) => formatUser(u, false)));
+      setUsers((uData || []).map((u: any) => {
+          try {
+              return formatUser(u, false);
+          } catch (e) {
+              console.error(`Erro ao formatar usuário ${u?.id}:`, e);
+              return null;
+          }
+      }).filter(u => u !== null) as User[]);
 
       if (!isSilent && !currentUser) {
         const savedId = sessionStorage.getItem('agenda_session_user_id');

@@ -8,7 +8,6 @@ import { TaskDetailsModal } from './components/TaskDetailsModal';
 import { ChatView } from './components/ChatView';
 import { KanbanBoard } from './components/KanbanBoard';
 import { CalendarView } from './components/CalendarView';
-import { HistoryView } from './components/HistoryView';
 import { UserAvatar } from './components/UserAvatar';
 import { MiniDashboardResumo } from './components/MiniDashboardResumo';
 import { Task, User, UserRole, Message, Attachment, TaskStatus, CompletionType } from './types';
@@ -157,11 +156,7 @@ export default function App() {
 
   useEffect(() => {
     if (activePage === 'chat') fetchMessages();
-    if (activePage === 'history' || activePage === 'team') {
-      fetchData(true, undefined, true);
-    } else {
-      fetchData(true);
-    }
+    fetchData(true);
   }, [activePage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Computed ──
@@ -233,7 +228,7 @@ export default function App() {
       if (!matchesSearch) return false;
 
       // Se estiver visualizando o Calendário ou Histórico, não aplicamos os filtros restritivos de data do Dashboard
-      if (viewType === 'calendar' || activePage === 'history') return true;
+      if (viewType === 'calendar') return true;
       
       // Aplicar filtro de data se não for "all" e não estiver no calendário
       if (listDateFilter !== 'all' && t.dueDate) {
@@ -477,7 +472,6 @@ export default function App() {
             { id: 'dashboard', label: 'Minhas Tarefas', icon: <UserCheck size={20} />, onClick: () => { setActivePage('dashboard'); setDashboardFilter('all'); setActiveChatUserId(null); }, match: activePage === 'dashboard' && dashboardFilter === 'all' },
             { id: 'priority', label: 'Favoritos', icon: <Star size={20} />, onClick: () => { setActivePage('priority'); setActiveChatUserId(null); }, match: activePage === 'priority' },
             { id: 'meetings', label: 'Reuniões', icon: <Video size={20} />, onClick: () => { setActivePage('meetings'); setActiveChatUserId(null); }, match: activePage === 'meetings' },
-            { id: 'history', label: 'Histórico', icon: <BarChart3 size={20} />, onClick: () => { setActivePage('history'); setActiveChatUserId(null); }, match: activePage === 'history' },
           ].map(item => (
             <button
               key={item.id}
@@ -618,13 +612,6 @@ export default function App() {
             messages={privateMessages}
             onSendMessage={handleSendMessage}
             roleLabels={ROLE_LABELS}
-          />
-        ) : activePage === 'history' ? (
-          <HistoryView 
-            tasks={filteredTasks} 
-            users={processedUsers} 
-            currentUser={currentUser} 
-            onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }} 
           />
         ) : activePage === 'team' ? (
           <div className="p-10">

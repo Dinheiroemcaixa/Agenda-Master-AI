@@ -76,23 +76,30 @@ export function useDataFetching({
           console.log("[FetchData] Modo fetchAll ativado. Itens carregados:", tData.length);
       } else {
           const todayStr = toDateString(new Date());
-          // Busca em várias frentes para garantir consistência sem estourar 5000:
-          // 1. Abertas
-          // 2. Concluídas no range
-          // 3. Maestras de recorrência (essencial para expansão virtual)
-          // 4. Concluídas hoje (essencial para dashboard stats)
-          const [openTasks, completedInRange, recurrenceMasters, completedToday] = await Promise.all([
-              supabase.from('tasks').select('*').eq('completed', false).order('order', { ascending: true }).limit(2000),
+          const extendedStartStr = toDateString(new Date(new Date().setDate(new Date().getDate() - 90))); // 90 dias atrás
+          
+          // Busca em várias frentes para garantir consistência:
+          const [openTasks, completedInRange, recurrenceGroups, completedToday] = await Promise.all([
+              // 1. Todas as tarefas abertas (limite maior)
+              supabase.from('tasks').select('*').eq('completed', false).order('order', { ascending: true }).limit(3000),
+              
+              // 2. Tarefas concluídas no range estendido (cobrir atrasos longos)
               supabase.from('tasks')
                 .select('*')
                 .eq('completed', true)
-                .gte('dueDate', rangeStartStr)
+                .gte('dueDate', extendedStartStr)
                 .lte('dueDate', rangeEndStr)
                 .limit(1000),
+              
+              // 3. Essencial: Todas as tarefas que pertencem a um grupo de recorrência
+              // Isso garante que se uma ocorrência foi concluída (mesmo há meses), ela será carregada
+              // e impedirá a criação de uma versão virtual "aberta".
               supabase.from('tasks')
                 .select('*')
-                .neq('recurrence', 'NONE')
-                .limit(1000),
+                .not('recurrenceGroupId', 'is', null)
+                .limit(2000),
+                
+              // 4. Concluídas hoje
               supabase.from('tasks')
                 .select('*')
                 .eq('completed', true)
@@ -104,12 +111,14 @@ export function useDataFetching({
           const combined = [
               ...(openTasks.data || []), 
               ...(completedInRange.data || []),
-              ...(recurrenceMasters.data || []),
+              ...(recurrenceGroups.data || []),
               ...(completedToday.data || [])
           ];
           
           const uniqueMap = new Map();
-          combined.forEach(t => uniqueMap.set(t.id, t));
+          combined.forEach(t => {
+            if (t && t.id) uniqueMap.set(t.id, t);
+          });
           tData = Array.from(uniqueMap.values());
       }
 

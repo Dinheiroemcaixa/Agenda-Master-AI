@@ -40,7 +40,7 @@ export function useTaskHandlers({
     const realTasksLookup = new Set<string>();
     tasks.forEach(t => {
       // Forçar parseLocalDate para garantir consistência no lookup
-      const d = t.dueDate instanceof Date ? t.dueDate : (t.dueDate ? parseLocalDate(t.dueDate as any) : null);
+      const d = t.dueDate ? parseLocalDate(t.dueDate as any) : null;
       if (t.recurrenceGroupId && d && t.status !== 'DELETED') {
         const key = `${t.recurrenceGroupId}_${toDateString(d)}`;
         realTasksLookup.add(key);
@@ -96,7 +96,7 @@ export function useTaskHandlers({
     const seenKeys = new Map<string, Task>();
 
     result.forEach(t => {
-      const d = t.dueDate instanceof Date ? t.dueDate : (t.dueDate ? parseLocalDate(t.dueDate as any) : null);
+      const d = t.dueDate ? parseLocalDate(t.dueDate as any) : null;
       // Normalizar ID removendo prefixo temporário para o agrupamento
       const baseId = t.id.replace('temp_', '');
       const key = (t.recurrenceGroupId && d) ? `${t.recurrenceGroupId}_${toDateString(d)}` : baseId;

@@ -164,9 +164,13 @@ export default function App() {
   const isDeveloper = currentUser?.role === 'DEVELOPER';
   const isAdmin = currentUser?.role === 'ADMIN';
   const isOperator = currentUser?.role === 'OPERATOR';
-  const hasOperatorPermissions = isOperator || isDeveloper;
-  const hasAdminPermissions = isAdmin;
-  const hasMasterPermissions = isAdmin;
+  
+  // REGRA DE OURO: Apenas Raffaela Lima (ID cxi8c1dcm) vê tudo.
+  // Demais usuários vêem apenas seus próprios dados.
+  const isGlobalViewer = currentUser?.id === 'cxi8c1dcm';
+  const hasOperatorPermissions = !isGlobalViewer; // Se não for visão global, trata como operador (filtra o próprio)
+  const hasAdminPermissions = isAdmin && !isGlobalViewer; // Admin normal, mas sem visão global de tarefas
+  const hasMasterPermissions = isGlobalViewer;
   const processedUsers = useMemo(() => users.map(u => ({...u, is_online: onlineUsers.has(u.id)})), [users, onlineUsers]);
 
   const getUnreadCount = useCallback((userId: string) => {
@@ -224,7 +228,9 @@ export default function App() {
     }
 
     return expandedTasks.filter(t => {
-      if (hasOperatorPermissions && t.userId !== currentUser?.id) return false;
+      // Regra de Isolamento Crítica (GOLDEN RULE)
+      if (!isGlobalViewer && t.userId !== currentUser?.id) return false;
+
       const matchesSearch = t.title.toLowerCase().includes(query) || (t.description || '').toLowerCase().includes(query);
       if (!matchesSearch) return false;
 
@@ -243,25 +249,24 @@ export default function App() {
       }
 
       if (activePage === 'dashboard') {
-        if (dashboardFilter === 'delayed') return t.userId === currentUser?.id && !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr;
-        if (dashboardFilter === 'completed') return t.userId === currentUser?.id && t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr;
+        if (dashboardFilter === 'delayed') return !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr;
+        if (dashboardFilter === 'completed') return t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr;
         
         // Se houver um filtro de data específico (que não seja "all"), ignoramos o filtro de "hoje" padrão do dashboard
-        if (listDateFilter !== 'all') return t.userId === currentUser?.id;
+        if (listDateFilter !== 'all') return true;
 
-        return t.userId === currentUser?.id && t.dueDate && toDateString(new Date(t.dueDate)) === todayStr;
+        return t.dueDate && toDateString(new Date(t.dueDate)) === todayStr;
       }
-      if (activePage === 'priority') return t.userId === currentUser?.id && t.isStarred;
-      if (activePage === 'meetings') return (hasAdminPermissions || t.userId === currentUser?.id) && t.type === 'meeting';
+      if (activePage === 'priority') return t.isStarred;
+      if (activePage === 'meetings') return t.type === 'meeting';
       return true;
     });
   }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions, viewType, listDateFilter, referenceDate]);
 
   const displayUsers = useMemo(() => {
-    if (hasOperatorPermissions) return [currentUser].filter(Boolean) as User[];
-    if (activePage === 'team' && hasAdminPermissions) return processedUsers.filter(u => u.id !== currentUser?.id);
-    return [currentUser].filter(Boolean) as User[];
-  }, [activePage, hasAdminPermissions, hasOperatorPermissions, processedUsers, currentUser]);
+    if (isGlobalViewer) return processedUsers;
+    return processedUsers.filter(u => u.id === currentUser?.id);
+  }, [isGlobalViewer, processedUsers, currentUser]);
 
   const privateMessages = useMemo(() => 
     currentUser ? messages.filter(m => m.fromUserId === currentUser.id || m.toUserId === currentUser.id) : []
@@ -491,12 +496,12 @@ export default function App() {
             </button>
           ))}
 
-          {isAdmin && (
+          {isGlobalViewer && (
             <button
               onClick={() => { setActivePage('team'); setActiveChatUserId(null); }}
               className={`w-full flex items-center justify-between p-3.5 rounded-2xl transition-all ${
                 activePage === 'team'
-                  ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20'
+                  ? 'bg-rose-600 text-white shadow-xl shadow-rose-600/20'
                   : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
@@ -513,7 +518,7 @@ export default function App() {
               Mensagens Diretas <MessageSquare size={12} />
             </p>
             <div className="space-y-1">
-              {processedUsers.filter(u => u.id !== currentUser.id).map(u => {
+              {displayUsers.filter(u => u.id !== currentUser.id).map(u => {
                 const unread = getUnreadCount(u.id);
                 const isActive = activePage === 'chat' && activeChatUserId === u.id;
                 return (
@@ -622,11 +627,11 @@ export default function App() {
             currentUser={currentUser} 
             onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }} 
           />
-        ) : activePage === 'team' ? (
+        ) : activePage === 'team' && isGlobalViewer ? (
           <div className="p-10">
             <h1 className="text-3xl font-black mb-6">Equipe</h1>
             <div className="flex flex-wrap gap-6">
-              {processedUsers.map(user => (
+              {displayUsers.map(user => (
                 <div key={user.id} className="w-full md:w-[400px] bg-white/80 dark:bg-slate-900/80 rounded-[40px] border border-white/40 dark:border-slate-800/40 shadow-xl backdrop-blur-md overflow-hidden mb-10 transition-all hover:shadow-2xl">
                   <TaskColumn
                     {...columnProps}
@@ -777,7 +782,7 @@ export default function App() {
                 {viewType === 'kanban' && (
                   <KanbanBoard
                     tasks={filteredTasks}
-                    users={processedUsers}
+                    users={displayUsers}
                     showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed'}
                     onOpenAddTask={() => setIsTaskModalOpen(true)}
                     onToggleTask={handleToggleTask}
@@ -791,7 +796,7 @@ export default function App() {
                 {viewType === 'calendar' && (
                   <CalendarView
                     tasks={filteredTasks}
-                    users={processedUsers}
+                    users={displayUsers}
                     onOpenAddTask={() => setIsTaskModalOpen(true)}
                     onEditTask={(t) => { setViewingTask(t); setIsTaskModalOpen(true); }}
                     onDateRangeChange={(start, end) => setDataRange({ start, end })}

@@ -20,7 +20,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ tasks, users, currentU
   const [userFilter, setUserFilter] = useState<string>('all');
 
   const filteredTasks = useMemo(() => {
-    let result = tasks.filter(t => t.completed || (!t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < toDateString(new Date())));
+    let result = tasks.filter(t => {
+      // Critério base de histórico (concluída ou atrasada real)
+      const isHistoryRelevant = t.completed || (!t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < toDateString(new Date()));
+      if (!isHistoryRelevant) return false;
+
+      // Isolamento de dados: Apenas Raffaela vê tudo. Outros vêem apenas o próprio.
+      const isRaffaela = currentUser?.id === 'cxi8c1dcm';
+      if (!isRaffaela && t.userId !== currentUser?.id) return false;
+
+      return true;
+    });
 
     // Search
     if (searchQuery) {

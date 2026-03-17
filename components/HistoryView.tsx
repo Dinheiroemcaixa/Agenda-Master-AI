@@ -145,8 +145,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ tasks, users, currentU
              </select>
           </div>
 
-          {/* User Filter */}
-          {(currentUser?.role === 'ADMIN' || currentUser?.role === 'DEVELOPER') && (
+          {/* User Filter - Only visible to Raffaela Lima */}
+          {currentUser?.id === 'cxi8c1dcm' && (
             <div className="flex items-center gap-2 p-1 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700">
                <UserIcon size={16} className="ml-3 text-slate-400" />
                <select 

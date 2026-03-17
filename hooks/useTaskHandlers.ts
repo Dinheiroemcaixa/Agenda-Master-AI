@@ -126,7 +126,6 @@ export function useTaskHandlers({
     const userTasks = expandedTasks.filter(t => t.userId === currentUser?.id);
     
     return { 
-      delayed: userTasks.filter(t => !t.completed && t.dueDate && toDateString(t.dueDate) < todayStr).length, 
       completed: userTasks.filter(t => t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr).length,
       total: userTasks.filter(t => !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) === todayStr).length,
     };

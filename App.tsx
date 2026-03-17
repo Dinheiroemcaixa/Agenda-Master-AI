@@ -53,7 +53,7 @@ export default function App() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dashboardFilter, setDashboardFilter] = useState<'all' | 'delayed' | 'completed'>('all');
+  const [dashboardFilter, setDashboardFilter] = useState<'all' | 'completed'>('all');
   
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -232,7 +232,7 @@ export default function App() {
       
       // Aplicar filtro de data se não for "all" e não estiver no calendário
       if (listDateFilter !== 'all' && t.dueDate) {
-        const isDashboardSpecialFilter = activePage === 'dashboard' && (dashboardFilter === 'delayed' || dashboardFilter === 'completed');
+        const isDashboardSpecialFilter = activePage === 'dashboard' && dashboardFilter === 'completed';
         if (!isDashboardSpecialFilter) {
           const tDateStr = toDateString(new Date(t.dueDate));
           if (filterStart && filterEnd) {
@@ -242,7 +242,6 @@ export default function App() {
       }
 
       if (activePage === 'dashboard') {
-        if (dashboardFilter === 'delayed') return t.userId === currentUser?.id && !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr;
         if (dashboardFilter === 'completed') return t.userId === currentUser?.id && t.completed && t.completedAt && toDateString(new Date(t.completedAt)) === todayStr;
         
         // Se houver um filtro de data específico (que não seja "all"), ignoramos o filtro de "hoje" padrão do dashboard
@@ -266,7 +265,7 @@ export default function App() {
     currentUser ? messages.filter(m => m.fromUserId === currentUser.id || m.toUserId === currentUser.id) : []
   , [messages, currentUser]);
 
-  const handleMiniDashboardFilter = (filter: 'all' | 'delayed' | 'completed') => {
+  const handleMiniDashboardFilter = (filter: 'all' | 'completed') => {
     setDashboardFilter(filter);
     setActivePage('dashboard');
     if (filter === 'completed') setShowCompleted(true);
@@ -460,7 +459,6 @@ export default function App() {
         {/* Navigation */}
         <nav className="p-4 space-y-1.5 flex-1 custom-scroll overflow-y-auto">
           <MiniDashboardResumo
-            delayedCount={dashboardStats.delayed}
             completedCount={dashboardStats.completed}
             totalCount={dashboardStats.total}
             activeFilter={dashboardFilter}
@@ -735,7 +733,7 @@ export default function App() {
                 </button>
 
                 {/* New Task Button */}
-                {((activePage === 'dashboard' && dashboardFilter !== 'completed' && dashboardFilter !== 'delayed') || activePage === 'priority' || activePage === 'meetings' || activePage === 'team') && (
+                {((activePage === 'dashboard' && dashboardFilter !== 'completed') || activePage === 'priority' || activePage === 'meetings' || activePage === 'team') && (
                   <button
                     onClick={() => setIsTaskModalOpen(true)}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 lg:px-8 py-2.5 lg:py-3.5 rounded-xl lg:rounded-2xl font-black uppercase tracking-widest text-[10px] lg:text-xs flex items-center gap-2 shadow-2xl shadow-indigo-600/30 transition-all active:scale-95 group"
@@ -760,7 +758,7 @@ export default function App() {
                       tasks={filteredTasks.filter(t => t.userId === user.id)}
                       hideHeaderIdentity={activePage !== 'team'}
                       pageContext={activePage}
-                      showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed' && dashboardFilter !== 'delayed'}
+                      showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed'}
                     />
                   </div>
                 ))}
@@ -769,7 +767,7 @@ export default function App() {
                   <KanbanBoard
                     tasks={filteredTasks}
                     users={processedUsers}
-                    showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed' && dashboardFilter !== 'delayed'}
+                    showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed'}
                     onOpenAddTask={() => setIsTaskModalOpen(true)}
                     onToggleTask={handleToggleTask}
                     onDeleteTask={handleDelete}

@@ -265,7 +265,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col group/section">
+    <div className="h-full min-h-0 w-full flex flex-col group/section">
       <div className="flex items-center gap-3 px-6 py-4 bg-white/40 dark:bg-slate-900/40 border-b border-gray-100 dark:border-slate-800">
         <button onClick={() => setIsCollapsed(!isCollapsed)} className={`p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-400 transition-all ${isCollapsed ? '-rotate-90' : ''}`}><ChevronDown size={18} /></button>
         

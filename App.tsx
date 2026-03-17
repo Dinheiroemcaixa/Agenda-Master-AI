@@ -274,8 +274,10 @@ export default function App() {
   }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions, viewType, listDateFilter, referenceDate]);
 
   const displayUsers = useMemo(() => {
-    // Apenas mostramos todos os usuários se estivermos na página de Equipe e for Master
-    if (activePage === 'team' && isGlobalViewer) return processedUsers;
+    // Apenas mostramos todos os outros usuários se estivermos na página de Equipe e for Master
+    if (activePage === 'team' && isGlobalViewer) {
+      return processedUsers.filter(u => u.id !== currentUser?.id);
+    }
     // Em qualquer outra tela, mostramos apenas o usuário logado
     return processedUsers.filter(u => u.id === currentUser?.id);
   }, [activePage, isGlobalViewer, processedUsers, currentUser]);
@@ -640,12 +642,12 @@ export default function App() {
             onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }} 
           />
         ) : activePage === 'team' && isGlobalViewer ? (
-          <div className="p-4 sm:p-10 flex-1 flex flex-col min-h-0">
+          <div className="p-4 sm:p-10 flex-1 flex flex-col min-h-0 overflow-hidden">
             <h1 className="text-3xl font-black mb-6 flex-shrink-0">Equipe</h1>
             <div className="flex-1 overflow-x-auto overflow-y-hidden pb-10">
               <div className="flex gap-6 h-full items-start">
                 {displayUsers.map(user => (
-                  <div key={user.id} className="w-[350px] sm:w-[400px] flex-shrink-0 bg-white/80 dark:bg-slate-900/80 rounded-[40px] border border-white/40 dark:border-slate-800/40 shadow-xl backdrop-blur-md overflow-hidden transition-all hover:shadow-2xl flex flex-col max-h-[calc(100vh-250px)]">
+                  <div key={user.id} className="w-[450px] sm:w-[500px] flex-shrink-0 bg-white/80 dark:bg-slate-900/80 rounded-[40px] border border-white/40 dark:border-slate-800/40 shadow-xl backdrop-blur-md overflow-hidden transition-all hover:shadow-2xl flex flex-col h-full min-h-0">
                     <TaskColumn
                       {...columnProps}
                       user={user}

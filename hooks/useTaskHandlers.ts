@@ -123,10 +123,7 @@ export function useTaskHandlers({
   // ── Dashboard stats ──
   const dashboardStats = useMemo(() => {
     const todayStr = toDateString(new Date());
-    const isGlobalViewer = currentUser?.id === 'cxi8c1dcm';
-    const relevantTasks = isGlobalViewer 
-      ? expandedTasks 
-      : expandedTasks.filter(t => t.userId === currentUser?.id);
+    const relevantTasks = expandedTasks.filter(t => t.userId === currentUser?.id);
     
     return { 
       delayed: relevantTasks.filter(t => !t.completed && t.dueDate && toDateString(new Date(t.dueDate)) < todayStr).length,

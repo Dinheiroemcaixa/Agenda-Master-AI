@@ -228,8 +228,14 @@ export default function App() {
     }
 
     return expandedTasks.filter(t => {
-      // Regra de Isolamento Crítica (GOLDEN RULE)
-      if (!isGlobalViewer && t.userId !== currentUser?.id) return false;
+      // Regra de Isolamento Dinâmica: 
+      // Se estiver na página de Equipe, o Global Viewer vê tudo.
+      // Em qualquer outra página, todos (incluindo Master) vêem apenas o próprio.
+      const isTeamPage = activePage === 'team';
+      if (!isTeamPage && t.userId !== currentUser?.id) return false;
+      
+      // Fallback para segurança extra se não for Master e tentar acessar Equipe (mesmo que o botão suma)
+      if (isTeamPage && !isGlobalViewer && t.userId !== currentUser?.id) return false;
 
       const matchesSearch = t.title.toLowerCase().includes(query) || (t.description || '').toLowerCase().includes(query);
       if (!matchesSearch) return false;
@@ -268,9 +274,11 @@ export default function App() {
   }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions, viewType, listDateFilter, referenceDate]);
 
   const displayUsers = useMemo(() => {
-    if (isGlobalViewer) return processedUsers;
+    // Apenas mostramos todos os usuários se estivermos na página de Equipe e for Master
+    if (activePage === 'team' && isGlobalViewer) return processedUsers;
+    // Em qualquer outra tela, mostramos apenas o usuário logado
     return processedUsers.filter(u => u.id === currentUser?.id);
-  }, [isGlobalViewer, processedUsers, currentUser]);
+  }, [activePage, isGlobalViewer, processedUsers, currentUser]);
 
   const privateMessages = useMemo(() => 
     currentUser ? messages.filter(m => m.fromUserId === currentUser.id || m.toUserId === currentUser.id) : []

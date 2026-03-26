@@ -61,6 +61,7 @@ export default function App() {
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [chatNotification, setChatNotification] = useState<Message | null>(null);
   const [taskToComplete, setTaskToComplete] = useState<string | null>(null);
+  const [recurringDeleteTarget, setRecurringDeleteTarget] = useState<string | null>(null);
 
   const [listDateFilter, setListDateFilter] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('day');
   const [referenceDate, setReferenceDate] = useState<Date>(new Date());
@@ -130,6 +131,32 @@ export default function App() {
     await rawConfirmCompletion(taskToComplete, type);
     setTaskToComplete(null);
   }, [taskToComplete, rawConfirmCompletion]);
+
+  const handleDeleteWithConfirmation = useCallback((id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (task?.recurrenceGroupId) {
+      setRecurringDeleteTarget(id);
+    } else {
+      handleDelete(id);
+    }
+  }, [tasks, handleDelete]);
+
+  const handleConfirmDelete = async (mode: 'one' | 'all') => {
+    if (!recurringDeleteTarget) return;
+    const task = tasks.find(t => t.id === recurringDeleteTarget);
+    if (!task) return;
+
+    if (mode === 'one') {
+      await handleDelete(recurringDeleteTarget);
+    } else {
+      // Deletar todos da série
+      const seriesIds = tasks.filter(t => t.recurrenceGroupId === task.recurrenceGroupId).map(t => t.id);
+      for (const id of seriesIds) {
+        await handleDelete(id);
+      }
+    }
+    setRecurringDeleteTarget(null);
+  };
 
   // ── Effects ──
   useEffect(() => {
@@ -427,7 +454,7 @@ export default function App() {
     onOpenAddTask: () => setIsTaskModalOpen(true),
     onToggleTask: handleToggleTask,
     onUpdateStatus: handleUpdateStatus,
-    onDeleteTask: handleDelete,
+    onDeleteTask: handleDeleteWithConfirmation,
     onEditTask: (t: Task) => { setViewingTask(t); setIsTaskModalOpen(true); },
     onViewTask: (t: Task) => { setViewingTask(t); setIsDetailsModalOpen(true); },
     onToggleStar: handleToggleStar,
@@ -475,15 +502,24 @@ export default function App() {
           </div>
           
           <div className="grid grid-cols-3 gap-2 w-full">
-            <div className="bg-indigo-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-indigo-500/20">
+            <div 
+              onClick={() => { setActivePage('dashboard'); setDashboardFilter('all'); setListDateFilter('day'); setReferenceDate(new Date()); }}
+              className="bg-indigo-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-indigo-500/20 cursor-pointer hover:bg-indigo-900/40 transition-all"
+            >
               <span className="text-xl font-black text-indigo-400 leading-none">{dashboardStats.total}</span>
               <span className="text-[8px] font-black uppercase text-indigo-300 mt-1">HOJE</span>
             </div>
-            <div className="bg-rose-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-rose-500/20">
+            <div 
+              onClick={() => { setActivePage('dashboard'); setDashboardFilter('delayed'); }}
+              className="bg-rose-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-rose-500/20 cursor-pointer hover:bg-rose-900/40 transition-all"
+            >
               <span className="text-xl font-black text-rose-400 leading-none">{dashboardStats.delayed}</span>
               <span className="text-[8px] font-black uppercase text-rose-300 mt-1">ATRASO</span>
             </div>
-            <div className="bg-emerald-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-emerald-500/20">
+            <div 
+              onClick={() => setActivePage('history')}
+              className="bg-emerald-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-emerald-500/20 cursor-pointer hover:bg-emerald-900/40 transition-all"
+            >
               <span className="text-xl font-black text-emerald-400 leading-none">{dashboardStats.completed}</span>
               <span className="text-[8px] font-black uppercase text-emerald-300 mt-1">FEITAS</span>
             </div>
@@ -524,11 +560,12 @@ export default function App() {
               {[
                 { id: 'team', label: 'Equipe', icon: <Users size={18} />, count: users.length, onClick: () => { setActivePage('team'); setActiveChatUserId(null); }, match: activePage === 'team' },
                 { id: 'meetings', label: 'Reuniões', icon: <Video size={18} />, onClick: () => { setActivePage('meetings'); setActiveChatUserId(null); }, match: activePage === 'meetings' },
-                { id: 'messages', label: 'Mensagens', icon: <MessageSquare size={18} />, onClick: () => { setActivePage('chat'); }, match: activePage === 'chat' },
+                { id: 'messages', label: 'Mensagens', icon: <MessageSquare size={18} />, onClick: () => {}, match: false },
               ].map(item => (
                 <button
                   key={item.id}
                   onClick={item.onClick}
+                  style={item.id === 'messages' ? { cursor: 'default' } : {}}
                   className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${
                     item.match
                       ? 'bg-indigo-600 text-white shadow-lg'
@@ -636,32 +673,7 @@ export default function App() {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex bg-[#1A1D2B] p-1 rounded-xl border border-slate-700/40">
-                  {[
-                    { id: 'all', label: 'Todas' },
-                    { id: 'open', label: 'Em Aberto' },
-                    { id: 'delayed', label: 'Atrasadas' },
-                    { id: 'high', label: 'Alta' }
-                  ].map(f => (
-                    <button 
-                      key={f.id}
-                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
-                        (f.id === 'all' && dashboardFilter === 'all' && activePage === 'dashboard') || 
-                        (f.id === 'delayed' && dashboardFilter === 'delayed') ||
-                        (f.id === 'high' && activePage === 'priority')
-                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-                        : 'text-slate-500 hover:text-slate-300'
-                      }`}
-                      onClick={() => {
-                        if (f.id === 'all') { setDashboardFilter('all'); setActivePage('dashboard'); }
-                        if (f.id === 'delayed') { setDashboardFilter('delayed'); setActivePage('dashboard'); }
-                        if (f.id === 'high') setActivePage('priority');
-                      }}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+                {/* Filtros removidos conforme solicitação */}
 
                 <div className="flex bg-[#1A1D2B] p-1 rounded-xl border border-slate-700/40 ml-2">
                   {[
@@ -1010,6 +1022,38 @@ export default function App() {
               <p className="text-sm text-slate-300 truncate mt-1 font-medium">
                 {chatNotification.type === 'file' ? '📄 Recebeu um arquivo' : chatNotification.text}
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL DE EXCLUSÃO RECORRENTE ── */}
+      {recurringDeleteTarget && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#0F111A] rounded-[32px] border border-slate-800/60 shadow-2xl p-8 max-w-sm w-full animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-white mb-2">Excluir Tarefa Recorrente</h3>
+            <p className="text-sm text-slate-400 mb-8 leading-relaxed">
+              Esta tarefa é <span className="text-indigo-400 font-bold">recorrente</span>. O que deseja fazer?
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setRecurringDeleteTarget(null)}
+                className="flex-1 py-3 bg-slate-900/50 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:text-white transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => handleConfirmDelete('one')}
+                className="flex-1 py-3 border border-amber-500/50 text-amber-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-500/10 transition-all"
+              >
+                Só esta
+              </button>
+              <button 
+                onClick={() => handleConfirmDelete('all')}
+                className="flex-1 py-3 bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-700 shadow-lg shadow-rose-600/20 transition-all"
+              >
+                Todas
+              </button>
             </div>
           </div>
         </div>

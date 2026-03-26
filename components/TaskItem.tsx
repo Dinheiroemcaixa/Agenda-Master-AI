@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Task, User, TaskStatus } from '../types';
 import { UserAvatar } from './UserAvatar';
-import { Calendar, MoreHorizontal, Trash2, Pencil, Flag, Clock, Ban, CheckCircle2, GripVertical, Video, Send, ChevronDown } from 'lucide-react';
+import { Calendar, MoreHorizontal, Trash2, Pencil, Flag, Clock, Ban, CheckCircle2, GripVertical, Video, Send, ChevronDown, List, AlignLeft } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
@@ -144,6 +144,17 @@ export const TaskItem = React.memo<TaskItemProps>(({
             <span className={`font-bold truncate tracking-tight transition-all ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
               {task.title}
             </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+               {task.description && (
+                  <AlignLeft size={10} className="text-slate-500" title="Tem anotações" />
+               )}
+               {task.subtasks && task.subtasks.length > 0 && (
+                  <div className="flex items-center gap-0.5 text-slate-500" title={`${task.subtasks.length} subtarefas`}>
+                     <List size={10} />
+                     <span className="text-[8px] font-black">{task.subtasks.length}</span>
+                  </div>
+               )}
+            </div>
             {task.isStarred && <Flag size={12} className="text-rose-500 fill-rose-500 shrink-0" />}
          </div>
          <div className="flex items-center gap-2">

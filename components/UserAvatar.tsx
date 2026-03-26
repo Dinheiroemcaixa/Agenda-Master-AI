@@ -32,6 +32,7 @@ export const UserAvatar = React.memo<UserAvatarProps>(({
   }, [user?.name]);
 
   const bgColorClass = useMemo(() => {
+    if (user?.profile_color) return user.profile_color;
     const colors = [
       'bg-indigo-600', 'bg-emerald-600', 'bg-rose-600', 
       'bg-amber-600', 'bg-purple-600', 'bg-sky-600',

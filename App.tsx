@@ -10,6 +10,9 @@ import { KanbanBoard } from './components/KanbanBoard';
 import { CalendarView } from './components/CalendarView';
 import { HistoryView } from './components/HistoryView';
 import { UserAvatar } from './components/UserAvatar';
+import { Sidebar } from './components/Sidebar';
+import { DashboardHeader } from './components/DashboardHeader';
+import { ProfileEditModal } from './components/ProfileEditModal';
 import { MiniDashboardResumo } from './components/MiniDashboardResumo';
 import { Task, User, UserRole, Message, Attachment, TaskStatus, CompletionType } from './types';
 import { supabase } from './services/supabaseClient'; 
@@ -65,6 +68,8 @@ export default function App() {
 
   const [listDateFilter, setListDateFilter] = useState<'day' | 'week' | 'month' | 'year' | 'all'>('day');
   const [referenceDate, setReferenceDate] = useState<Date>(new Date());
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const [dataRange, setDataRange] = useState<{ start: string; end: string }>(() => {
     const today = new Date();
@@ -229,6 +234,44 @@ export default function App() {
     setCurrentUser(null);
     sessionStorage.removeItem('agenda_session_user_id');
   };
+
+  const toggleSelectTask = useCallback((taskId: string) => {
+    setSelectedTaskIds(prev => 
+      prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
+    );
+  }, []);
+
+  const handleBulkComplete = useCallback(async () => {
+    if (selectedTaskIds.length === 0) return;
+    if (!window.confirm(`Deseja concluir as ${selectedTaskIds.length} tarefas selecionadas?`)) return;
+    
+    try {
+      const now = new Date().toISOString();
+      await supabase.from('tasks')
+        .update({ completed: true, status: 'COMPLETED', "completedAt": now })
+        .in('id', selectedTaskIds);
+      
+      setTasks(prev => prev.map(t => 
+        selectedTaskIds.includes(t.id) ? { ...t, completed: true, status: 'COMPLETED', completedAt: new Date(now) } : t
+      ));
+      setSelectedTaskIds([]);
+    } catch (err) {
+      console.error("Erro ao concluir tarefas em massa:", err);
+    }
+  }, [selectedTaskIds, setTasks]);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedTaskIds.length === 0) return;
+    if (!window.confirm(`Deseja EXCLUIR DEFINITIVAMENTE as ${selectedTaskIds.length} tarefas selecionadas?`)) return;
+    
+    try {
+      await supabase.from('tasks').delete().in('id', selectedTaskIds);
+      setTasks(prev => prev.filter(t => !selectedTaskIds.includes(t.id)));
+      setSelectedTaskIds([]);
+    } catch (err) {
+      console.error("Erro ao excluir tarefas em massa:", err);
+    }
+  }, [selectedTaskIds, setTasks]);
 
   const filteredTasks = useMemo(() => {
     const todayStr = toDateString(new Date());
@@ -465,8 +508,8 @@ export default function App() {
     onChangeRole: handleUpdateRole,
     onDeleteCompletedTasks: () => {},
     onSortChange: () => {},
-    selectedTaskIds: [] as string[],
-    onToggleSelectTask: () => {},
+    selectedTaskIds,
+    onToggleSelectTask: toggleSelectTask,
     onReassignTask: handleReassignTask,
   };
 
@@ -484,271 +527,48 @@ export default function App() {
       )}
 
       {/* ── SIDEBAR ── */}
-      <aside className={`
-        ${sidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full lg:w-0'} 
-        fixed lg:relative bg-[#0F111A] border-r border-slate-800/60 
-        transition-all duration-300 flex flex-col z-50 h-full overflow-hidden
-      `}>
-        {/* Sidebar Header */}
-        <div className="p-6 flex flex-col items-center border-b border-slate-800/50">
-          <div className="flex items-center gap-3 mb-6 w-full">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
-              <span className="font-black text-xl">P</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-black text-lg text-white tracking-tight leading-none">Pulse Agenda</span>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gestão de Tarefas</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2 w-full">
-            <div 
-              onClick={() => { setActivePage('dashboard'); setDashboardFilter('all'); setListDateFilter('day'); setReferenceDate(new Date()); }}
-              className="bg-indigo-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-indigo-500/20 cursor-pointer hover:bg-indigo-900/40 transition-all"
-            >
-              <span className="text-xl font-black text-indigo-400 leading-none">{dashboardStats.total}</span>
-              <span className="text-[8px] font-black uppercase text-indigo-300 mt-1">HOJE</span>
-            </div>
-            <div 
-              onClick={() => { setActivePage('dashboard'); setDashboardFilter('delayed'); }}
-              className="bg-rose-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-rose-500/20 cursor-pointer hover:bg-rose-900/40 transition-all"
-            >
-              <span className="text-xl font-black text-rose-400 leading-none">{dashboardStats.delayed}</span>
-              <span className="text-[8px] font-black uppercase text-rose-300 mt-1">ATRASO</span>
-            </div>
-            <div 
-              onClick={() => setActivePage('history')}
-              className="bg-emerald-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-emerald-500/20 cursor-pointer hover:bg-emerald-900/40 transition-all"
-            >
-              <span className="text-xl font-black text-emerald-400 leading-none">{dashboardStats.completed}</span>
-              <span className="text-[8px] font-black uppercase text-emerald-300 mt-1">FEITAS</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="p-4 flex-1 custom-scroll overflow-y-auto space-y-6">
-          {/* PRINCIPAL Section */}
-          <div>
-            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 ml-2">Principal</p>
-            <div className="space-y-1">
-              {[
-                { id: 'dashboard', label: 'Minhas Tarefas', icon: <CheckCircle2 size={18} />, onClick: () => { setActivePage('dashboard'); setDashboardFilter('all'); setActiveChatUserId(null); }, match: activePage === 'dashboard' && dashboardFilter === 'all' },
-                { id: 'delayed', label: 'Atrasadas', icon: <Clock size={18} />, onClick: () => { setActivePage('dashboard'); setDashboardFilter('delayed'); setActiveChatUserId(null); }, match: activePage === 'dashboard' && dashboardFilter === 'delayed' },
-                { id: 'history', label: 'Histórico', icon: <BarChart3 size={18} />, onClick: () => { setActivePage('history'); setActiveChatUserId(null); }, match: activePage === 'history' },
-              ].map(item => (
-                <button
-                  key={item.id}
-                  onClick={item.onClick}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                    item.match
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-500 hover:bg-slate-800/50'
-                  }`}
-                >
-                  <div className={item.match ? 'text-white' : 'text-indigo-500'}>{item.icon}</div>
-                  <span className="text-sm font-bold">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* EQUIPE Section */}
-          <div>
-            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 ml-2">Equipe</p>
-            <div className="space-y-1">
-              {[
-                { id: 'team', label: 'Equipe', icon: <Users size={18} />, count: users.length, onClick: () => { setActivePage('team'); setActiveChatUserId(null); }, match: activePage === 'team' },
-                { id: 'meetings', label: 'Reuniões', icon: <Video size={18} />, onClick: () => { setActivePage('meetings'); setActiveChatUserId(null); }, match: activePage === 'meetings' },
-                { id: 'messages', label: 'Mensagens', icon: <MessageSquare size={18} />, onClick: () => {}, match: false },
-              ].map(item => (
-                <button
-                  key={item.id}
-                  onClick={item.onClick}
-                  style={item.id === 'messages' ? { cursor: 'default' } : {}}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${
-                    item.match
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-500 hover:bg-slate-800/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={item.match ? 'text-white' : 'text-indigo-500'}>{item.icon}</div>
-                    <span className="text-sm font-bold">{item.label}</span>
-                  </div>
-                  {item.count && (
-                    <span className="bg-indigo-500 text-[10px] font-black px-2 py-0.5 rounded-full text-white">
-                      {item.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* MEMBROS Section */}
-          <div>
-            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 ml-2">Membros</p>
-            <div className="space-y-1">
-              {users.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => { setActiveChatUserId(u.id); setActivePage('chat'); }}
-                  className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
-                    activeChatUserId === u.id && activePage === 'chat'
-                      ? 'bg-indigo-900/20 text-indigo-400 border border-indigo-500/20'
-                      : 'text-slate-500 hover:bg-slate-800/30'
-                  }`}
-                >
-                  <UserAvatar user={u} className="w-8 h-8" showStatus={true} />
-                  <span className="text-xs font-bold truncate uppercase">{u.name}</span>
-                  {u.id === currentUser.id && <span className="text-[8px] font-black text-slate-500 lowercase ml-auto self-center">eu</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="p-4 space-y-3">
-          <div className="bg-slate-800/40 rounded-3xl p-3 border border-slate-700/50 flex items-center gap-3 relative group transition-all hover:bg-slate-800/60 cursor-pointer" onClick={() => setUserMenuOpen(!userMenuOpen)}>
-            <div className="w-10 h-10 rounded-2xl bg-[#1A1D2B] border border-slate-700/50 flex items-center justify-center text-emerald-400 font-bold text-xs uppercase">
-              {currentUser.name[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black truncate uppercase text-white leading-tight">{currentUser.name}</p>
-              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{ROLE_LABELS[currentUser.role]}</p>
-            </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-            
-            {userMenuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#0F111A] rounded-2xl border border-slate-800 shadow-2xl p-2 z-[60] animate-in slide-in-from-bottom-2">
-                <button
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 text-xs font-bold transition-colors"
-                >
-                  {theme === 'dark' ? <Sun size={16} className="text-amber-500" /> : <Moon size={16} className="text-indigo-500" />}
-                  Modo {theme === 'dark' ? 'Claro' : 'Escuro'}
-                </button>
-              </div>
-            )}
-          </div>
-          
-          <button 
-            onClick={handleLogout}
-            className="w-full h-11 flex items-center justify-center gap-2 rounded-xl border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all group"
-          >
-            <LogOut size={14} className="group-hover:-translate-x-1 transition-transform" />
-            Sair
-          </button>
-        </div>
-      </aside>
+      <Sidebar 
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        currentUser={currentUser}
+        users={users}
+        activePage={activePage}
+        setActivePage={setActivePage}
+        dashboardFilter={dashboardFilter}
+        setDashboardFilter={setDashboardFilter}
+        setListDateFilter={setListDateFilter}
+        setReferenceDate={setReferenceDate}
+        setActiveChatUserId={setActiveChatUserId}
+        activeChatUserId={activeChatUserId}
+        dashboardStats={dashboardStats}
+        theme={theme}
+        setTheme={setTheme}
+        userMenuOpen={userMenuOpen}
+        setUserMenuOpen={setUserMenuOpen}
+        handleLogout={handleLogout}
+        roleLabels={ROLE_LABELS}
+        onOpenProfileEdit={() => setIsProfileModalOpen(true)}
+      />
 
       {/* ── MAIN CONTENT ── */}
       <main className="flex-1 flex flex-col min-w-0 bg-[#090B11] relative">
-        {/* Header Section (Always Visible except in Chat/History/Team) */}
+        {/* Header Section */}
         {activePage !== 'chat' && activePage !== 'history' && activePage !== 'team' && (
-          <header className="px-6 py-6 bg-[#0F111A] border-b border-slate-800/60 z-30">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex flex-col">
-                <h1 className="text-xl font-black text-white leading-tight">
-                  {activePage === 'dashboard' ? (dashboardFilter === 'delayed' ? 'Tarefas Atrasadas' : 'Minhas Tarefas') :
-                   activePage === 'priority' ? 'Favoritos' :
-                   activePage === 'meetings' ? 'Reuniões' : 'Equipe'}
-                </h1>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                  Visualize em Lista, Kanban ou Agenda
-                </p>
-              </div>
-
-              <div className="relative flex-1 max-w-xl mx-8">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                <input
-                  type="text"
-                  placeholder="Buscar tarefa..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-10 pl-11 pr-5 bg-[#1A1D2B] rounded-xl text-xs font-bold text-slate-300 outline-none border border-slate-700/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-600"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Filtros removidos conforme solicitação */}
-
-                <div className="flex bg-[#1A1D2B] p-1 rounded-xl border border-slate-700/40 ml-2">
-                  {[
-                    { type: 'list' as const, icon: <List size={16}/> },
-                    { type: 'kanban' as const, icon: <LayoutGrid size={16}/> },
-                    { type: 'calendar' as const, icon: <CalendarIcon size={16}/> },
-                  ].map(v => (
-                    <button
-                      key={v.type}
-                      onClick={() => setViewType(v.type)}
-                      className={`p-1.5 rounded-lg transition-all ${
-                        viewType === v.type
-                          ? 'bg-indigo-600 text-white shadow-lg'
-                          : 'text-slate-500 hover:text-slate-300'
-                      }`}
-                    >
-                      {v.icon}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => setIsTaskModalOpen(true)}
-                  className="ml-4 h-10 bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 shadow-xl shadow-indigo-600/30 transition-all active:scale-95"
-                >
-                  <Plus size={16} />
-                  + Nova Tarefa
-                </button>
-              </div>
-            </div>
-
-            {/* Filters Bar (Date & Tags) */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800/40">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-slate-500 uppercase">Data:</span>
-                  <div className="flex items-center gap-2 bg-[#1A1D2B] px-3 py-1.5 rounded-lg border border-slate-700/40">
-                    <input 
-                      type="date" 
-                      value={toDateString(referenceDate)}
-                      onChange={(e) => setReferenceDate(parseLocalDate(e.target.value))}
-                      className="bg-transparent text-[10px] font-black text-slate-300 outline-none"
-                    />
-                    <CalendarIcon size={12} className="text-slate-500" />
-                  </div>
-                </div>
-                <button onClick={() => setReferenceDate(new Date())} className="bg-indigo-900/30 text-indigo-400 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase border border-indigo-500/20 hover:bg-indigo-900/50 transition-all">Hoje</button>
-                <button onClick={() => { setListDateFilter('all'); setReferenceDate(new Date()); setSearchQuery(''); }} className="text-slate-500 hover:text-rose-500 px-2 py-1.5 text-[10px] font-black uppercase transition-all flex items-center gap-1">
-                  <X size={12} /> Limpar
-                </button>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
-                  <Filter size={10} /> Tag:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { label: 'Projeto', color: 'bg-indigo-900/40 text-indigo-400 border-indigo-500/30' },
-                    { label: 'Financeiro', color: 'bg-emerald-900/40 text-emerald-400 border-emerald-500/30' },
-                    { label: 'Urgente', color: 'bg-orange-900/40 text-orange-400 border-orange-500/30' },
-                    { label: 'CONCILIAR', color: 'bg-sky-900/40 text-sky-400 border-sky-500/30' },
-                    { label: 'RELATÓRIOS', color: 'bg-purple-900/40 text-purple-400 border-purple-500/30' },
-                    { label: 'PAGAR', color: 'bg-rose-900/40 text-rose-400 border-rose-500/30' },
-                    { label: 'Reunião', color: 'bg-blue-900/40 text-blue-400 border-blue-500/30' },
-                    { label: 'BOLETOS', color: 'bg-cyan-900/40 text-cyan-400 border-cyan-500/30' },
-                  ].map(tag => (
-                    <button key={tag.label} className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase border transition-all hover:scale-105 ${tag.color}`}>
-                      {tag.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </header>
+          <DashboardHeader 
+            activePage={activePage}
+            dashboardFilter={dashboardFilter}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            viewType={viewType}
+            setViewType={setViewType}
+            setIsTaskModalOpen={setIsTaskModalOpen}
+            referenceDate={referenceDate}
+            setReferenceDate={setReferenceDate}
+            setListDateFilter={setListDateFilter}
+            selectedTaskIds={selectedTaskIds}
+            onBulkComplete={handleBulkComplete}
+            onBulkDelete={handleBulkDelete}
+          />
         )}
 
         <div className="flex-1 overflow-hidden flex flex-col relative">
@@ -1058,6 +878,16 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <ProfileEditModal 
+        user={currentUser}
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        onUpdate={(updatedUser) => {
+          setCurrentUser(updatedUser);
+          setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+        }}
+      />
     </div>
   );
 }

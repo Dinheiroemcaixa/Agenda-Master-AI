@@ -84,7 +84,9 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
   onChangeRole,
   onToggleStar,
   onChangeOrder,
-  onReassignTask
+  onReassignTask,
+  selectedTaskIds = [],
+  onToggleSelectTask
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -310,7 +312,24 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
       {!isCollapsed && (
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="grid grid-cols-[50px_1fr_120px_110px_90px_110px_100px] gap-4 px-6 py-2.5 border-b border-slate-800/60 bg-[#1A1D2B]/30">
-                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">#</div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center flex items-center justify-center">
+                    <input 
+                      type="checkbox" 
+                      checked={tasks.length > 0 && tasks.every(t => selectedTaskIds.includes(t.id))}
+                      onChange={() => {
+                        const allIds = tasks.map(t => t.id);
+                        const allSelected = allIds.every(id => selectedTaskIds.includes(id));
+                        if (allSelected) {
+                          allIds.forEach(id => onToggleSelectTask(id));
+                        } else {
+                          allIds.forEach(id => {
+                            if (!selectedTaskIds.includes(id)) onToggleSelectTask(id);
+                          });
+                        }
+                      }}
+                      className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900/50 checked:bg-indigo-600 checked:border-indigo-600 transition-all cursor-pointer"
+                    />
+                </div>
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{isMeetingContext ? 'REUNIÃO' : 'TAREFA'}</div>
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">RESPONSÁVEL</div>
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">DATA/HORA</div>
@@ -336,7 +355,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
                     strategy={verticalListSortingStrategy}
                 >
                     {activeTasks.map((task, index) => (
-                        <SortableTaskItem key={task.id} task={task} assignee={user} allUsers={allUsers} currentUser={currentUser} onToggle={onToggleTask} onUpdateStatus={onUpdateStatus} onDelete={onDeleteTask} onEdit={onEditTask} onViewTask={onViewTask} onToggleStar={onToggleStar} onReassignTask={onReassignTask} onChangeOrder={onChangeOrder} index={index} onEnrich={()=>{}} />
+                        <SortableTaskItem key={task.id} task={task} assignee={user} allUsers={allUsers} currentUser={currentUser} onToggle={onToggleTask} onUpdateStatus={onUpdateStatus} onDelete={onDeleteTask} onEdit={onEditTask} onViewTask={onViewTask} onToggleStar={onToggleStar} onReassignTask={onReassignTask} onChangeOrder={onChangeOrder} index={index} onEnrich={()=>{}} isSelected={selectedTaskIds.includes(task.id)} onSelect={() => onToggleSelectTask(task.id)} />
                     ))}
                 </SortableContext>
                 {createPortal(
@@ -358,6 +377,8 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
                             index={activeTasks.findIndex(t => t.id === activeId)} 
                             onEnrich={()=>{}} 
                             isOverlay={true}
+                            isSelected={selectedTaskIds.includes(activeTask.id)}
+                            onSelect={() => onToggleSelectTask(activeTask.id)}
                           />
                       ) : null}
                   </DragOverlay>,
@@ -379,7 +400,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">{labelPrefix}s Concluídas ({completedTasks.length})</h3>
                   </div>
                   {completedTasks.map((task, index) => (
-                      <TaskItem key={task.id} task={task} assignee={user} allUsers={allUsers} currentUser={currentUser} onToggle={onToggleTask} onUpdateStatus={onUpdateStatus} onDelete={onDeleteTask} onEdit={onEditTask} onViewTask={onViewTask} onToggleStar={onToggleStar} onReassignTask={onReassignTask} onChangeOrder={onChangeOrder} index={activeTasks.length + index} onEnrich={()=>{}} />
+                      <TaskItem key={task.id} task={task} assignee={user} allUsers={allUsers} currentUser={currentUser} onToggle={onToggleTask} onUpdateStatus={onUpdateStatus} onDelete={onDeleteTask} onEdit={onEditTask} onViewTask={onViewTask} onToggleStar={onToggleStar} onReassignTask={onReassignTask} onChangeOrder={onChangeOrder} index={activeTasks.length + index} onEnrich={()=>{}} isSelected={selectedTaskIds.includes(task.id)} onSelect={() => onToggleSelectTask(task.id)} />
                   ))}
                 </div>
               )}

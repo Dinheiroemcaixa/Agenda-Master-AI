@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL DEFAULT 'OPERATOR',
     login TEXT UNIQUE,
     password TEXT,
+    profile_color TEXT,
     last_seen TIMESTAMP WITH TIME ZONE,
     is_online BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

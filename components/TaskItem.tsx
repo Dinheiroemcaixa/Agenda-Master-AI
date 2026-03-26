@@ -46,7 +46,9 @@ export const TaskItem = React.memo<TaskItemProps>(({
   dragStyle,
   dragAttributes,
   dragListeners,
-  isOverlay
+  isOverlay,
+  isSelected,
+  onSelect
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -119,6 +121,16 @@ export const TaskItem = React.memo<TaskItemProps>(({
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => !isOverlay && onViewTask(task)}
     >
+      {/* Selection Checkbox */}
+      <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+        <input 
+          type="checkbox" 
+          checked={isSelected}
+          onChange={() => onSelect?.()}
+          className="w-4 h-4 rounded border-slate-700 bg-slate-900/50 checked:bg-indigo-600 checked:border-indigo-600 transition-all cursor-pointer"
+        />
+      </div>
+
       {/* # ID & Grip */}
       <div className="flex items-center gap-2">
          <div 
@@ -157,7 +169,7 @@ export const TaskItem = React.memo<TaskItemProps>(({
             )}
             
             {(task.recurrenceRule || task.recurrenceGroupId) && (
-              <span className="px-2 py-0.5 rounded-full bg-purple-900/40 text-purple-400 text-[9px] font-black uppercase border border-purple-500/30 whitespace-nowrap flex items-center gap-1 leading-none">
+              <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[9px] font-black uppercase border border-slate-700 whitespace-nowrap flex items-center gap-1 leading-none shadow-sm">
                 <Repeat size={10} /> Recorrente
               </span>
             )}

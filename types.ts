@@ -14,6 +14,7 @@ export interface User {
   last_seen?: string | Date | null;
   isMaster?: boolean;
   is_online?: boolean;
+  profile_color?: string;
 }
 
 export interface Attachment {

@@ -21,7 +21,7 @@ interface DashboardHeaderProps {
   onBulkDelete: () => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
+export const DashboardHeader = React.memo<DashboardHeaderProps>(({
   activePage, dashboardFilter, searchQuery, setSearchQuery,
   viewType, setViewType, setIsTaskModalOpen,
   referenceDate, setReferenceDate, setListDateFilter,
@@ -147,4 +147,4 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       </div>
     </header>
   );
-};
+});

@@ -113,7 +113,7 @@ export const TaskItem = React.memo<TaskItemProps>(({
     <div 
         ref={dragRef}
         style={dragStyle}
-        className={`group grid grid-cols-[50px_1fr_120px_110px_90px_110px_100px] gap-4 px-6 py-4 border-b border-slate-800/40 items-center text-[13px] transition-all duration-200 relative
+        className={`group grid grid-cols-[40px_50px_1fr_120px_110px_90px_110px_100px] gap-4 px-6 py-4 border-b border-slate-800/40 items-center text-[13px] transition-all duration-200 relative
             ${isOverlay ? 'bg-[#1A1D2B] shadow-2xl scale-[1.02] z-50 rounded-2xl border border-indigo-500/30 cursor-grabbing' : 'hover:bg-[#151824] cursor-pointer'}
             ${task.completed ? 'opacity-50' : ''}
         `}

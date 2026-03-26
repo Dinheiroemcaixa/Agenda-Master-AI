@@ -32,7 +32,7 @@ interface SidebarProps {
   onOpenProfileEdit: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const Sidebar = React.memo<SidebarProps>(({
   sidebarOpen, setSidebarOpen, currentUser, users, activePage, setActivePage,
   dashboardFilter, setDashboardFilter, setListDateFilter, setReferenceDate,
   setActiveChatUserId, activeChatUserId, dashboardStats, theme, setTheme,
@@ -207,4 +207,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
     </aside>
   );
-};
+});

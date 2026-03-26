@@ -62,7 +62,7 @@ const SortableTaskItem = ({ task, index, ...props }: any) => {
   );
 };
 
-export const TaskColumn: React.FC<ExtendedColumnProps> = ({ 
+export const TaskColumn = React.memo<ExtendedColumnProps>(({ 
   user, 
   tasks, 
   allUsers, 
@@ -142,7 +142,9 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
     });
   }, [tasks]);
 
+  const [displayLimit, setDisplayLimit] = useState(100);
   const activeTasks = useMemo(() => sortedTasks.filter(t => !t.completed), [sortedTasks]);
+  const visibleActiveTasks = useMemo(() => activeTasks.slice(0, displayLimit), [activeTasks, displayLimit]);
   const completedTasks = useMemo(() => sortedTasks.filter(t => t.completed), [sortedTasks]);
 
   useEffect(() => {
@@ -311,7 +313,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
 
       {!isCollapsed && (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="grid grid-cols-[50px_1fr_120px_110px_90px_110px_100px] gap-4 px-6 py-2.5 border-b border-slate-800/60 bg-[#1A1D2B]/30">
+            <div className="grid grid-cols-[40px_50px_1fr_120px_110px_90px_110px_100px] gap-4 px-6 py-2.5 border-b border-slate-800/60 bg-[#1A1D2B]/30">
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center flex items-center justify-center">
                     <input 
                       type="checkbox" 
@@ -338,7 +340,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">AÇÕES</div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scroll pb-10">
+            <div className="flex-1 overflow-y-auto custom-scroll pb-10" style={{ contentVisibility: 'auto' }}>
               <DndContext 
                 sensors={sensors} 
                 collisionDetection={closestCenter} 
@@ -351,13 +353,21 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
                 }}
               >
                 <SortableContext 
-                    items={activeTasks.map(t => t.id)}
+                    items={visibleActiveTasks.map(t => t.id)}
                     strategy={verticalListSortingStrategy}
                 >
-                    {activeTasks.map((task, index) => (
+                    {visibleActiveTasks.map((task, index) => (
                         <SortableTaskItem key={task.id} task={task} assignee={user} allUsers={allUsers} currentUser={currentUser} onToggle={onToggleTask} onUpdateStatus={onUpdateStatus} onDelete={onDeleteTask} onEdit={onEditTask} onViewTask={onViewTask} onToggleStar={onToggleStar} onReassignTask={onReassignTask} onChangeOrder={onChangeOrder} index={index} onEnrich={()=>{}} isSelected={selectedTaskIds.includes(task.id)} onSelect={() => onToggleSelectTask(task.id)} />
                     ))}
                 </SortableContext>
+                {activeTasks.length > displayLimit && (
+                  <button 
+                    onClick={() => setDisplayLimit(prev => prev + 100)}
+                    className="w-full py-4 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-colors bg-indigo-900/10 hover:bg-indigo-600/20"
+                  >
+                    Carregar mais tarefas (+{activeTasks.length - displayLimit} restantes)
+                  </button>
+                )}
                 {createPortal(
                   <DragOverlay dropAnimation={dropAnimation}>
                       {activeTask ? (
@@ -409,4 +419,4 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
       )}
     </div>
   );
-};
+});

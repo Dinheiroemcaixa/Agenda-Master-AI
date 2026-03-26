@@ -343,6 +343,15 @@ export default function App() {
     });
   }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions, viewType, listDateFilter, referenceDate]);
 
+  const tasksByUser = useMemo(() => {
+    const grouped: Record<string, Task[]> = {};
+    filteredTasks.forEach(task => {
+      if (!grouped[task.userId]) grouped[task.userId] = [];
+      grouped[task.userId].push(task);
+    });
+    return grouped;
+  }, [filteredTasks]);
+
   const displayUsers = useMemo(() => {
     // Apenas mostramos todos os outros usuários se estivermos na página de Equipe e for Master
     if (activePage === 'team' && isGlobalViewer) {
@@ -598,7 +607,7 @@ export default function App() {
                       <TaskColumn
                         {...columnProps}
                         user={user}
-                        tasks={filteredTasks.filter(t => t.userId === user.id)}
+                        tasks={tasksByUser[user.id] || []}
                         hideHeaderIdentity={false}
                         pageContext="team"
                       />
@@ -615,7 +624,7 @@ export default function App() {
                     <TaskColumn
                       {...columnProps}
                       user={user}
-                      tasks={filteredTasks.filter(t => t.userId === user.id)}
+                      tasks={tasksByUser[user.id] || []}
                       hideHeaderIdentity={activePage !== 'team'}
                       pageContext={activePage}
                       showAddTaskButton={activePage !== 'history' && dashboardFilter !== 'completed' && dashboardFilter !== 'delayed'}

@@ -78,6 +78,8 @@ export interface Task {
   order?: number;
   isVirtual?: boolean;
   completedAt?: Date;
+  priority?: 'Baixa' | 'Média' | 'Alta';
+  tags?: string[];
 }
 
 export interface ColumnProps {

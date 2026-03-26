@@ -94,3 +94,5 @@ CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
 
 -- Coluna completedAt (pode não existir em bancos antigos)
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP WITH TIME ZONE;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "priority" TEXT DEFAULT 'Baixa';
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "tags" JSONB DEFAULT '[]'::jsonb;

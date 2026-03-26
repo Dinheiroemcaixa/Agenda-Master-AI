@@ -445,7 +445,7 @@ export default function App() {
 
   // ── Render Principal ──
   return (
-    <div className={`app-container flex h-screen w-full overflow-hidden text-slate-800 dark:text-slate-100 transition-all duration-500 border-t-[3px] relative ${
+    <div className={`app-container flex h-screen w-full overflow-hidden text-slate-100 transition-all duration-500 border-t-[3px] relative bg-[#090B11] ${
       isAdmin || isDeveloper ? 'border-rose-600/40' : 'border-indigo-600/40'
     }`}>
       {/* Overlay mobile */}
@@ -459,331 +459,327 @@ export default function App() {
       {/* ── SIDEBAR ── */}
       <aside className={`
         ${sidebarOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full lg:w-0'} 
-        fixed lg:relative bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 
+        fixed lg:relative bg-[#0F111A] border-r border-slate-800/60 
         transition-all duration-300 flex flex-col z-50 h-full overflow-hidden
       `}>
         {/* Sidebar Header */}
-        <div className="p-7 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all duration-500 ${
-              isAdmin || isDeveloper ? 'bg-rose-600 shadow-rose-600/20' : 'bg-indigo-600 shadow-indigo-600/20'
-            }`}>
-              <ShieldCheck size={26} />
+        <div className="p-6 flex flex-col items-center border-b border-slate-800/50">
+          <div className="flex items-center gap-3 mb-6 w-full">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
+              <span className="font-black text-xl">P</span>
             </div>
-            <span className="font-black text-2xl tracking-tighter">Master AI</span>
+            <div className="flex flex-col">
+              <span className="font-black text-lg text-white tracking-tight leading-none">Pulse Agenda</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gestão de Tarefas</span>
+            </div>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-rose-500 transition-colors">
-            <X size={20} />
-          </button>
+          
+          <div className="grid grid-cols-3 gap-2 w-full">
+            <div className="bg-indigo-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-indigo-500/20">
+              <span className="text-xl font-black text-indigo-400 leading-none">{dashboardStats.total}</span>
+              <span className="text-[8px] font-black uppercase text-indigo-300 mt-1">HOJE</span>
+            </div>
+            <div className="bg-rose-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-rose-500/20">
+              <span className="text-xl font-black text-rose-400 leading-none">{dashboardStats.delayed}</span>
+              <span className="text-[8px] font-black uppercase text-rose-300 mt-1">ATRASO</span>
+            </div>
+            <div className="bg-emerald-900/20 rounded-xl p-2 flex flex-col items-center justify-center border border-emerald-500/20">
+              <span className="text-xl font-black text-emerald-400 leading-none">{dashboardStats.completed}</span>
+              <span className="text-[8px] font-black uppercase text-emerald-300 mt-1">FEITAS</span>
+            </div>
+          </div>
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1.5 flex-1 custom-scroll overflow-y-auto">
-          <MiniDashboardResumo
-            delayedCount={dashboardStats.delayed}
-            completedCount={dashboardStats.completed}
-            totalCount={dashboardStats.total}
-            activeFilter={dashboardFilter}
-            onFilterChange={handleMiniDashboardFilter}
-          />
-          
-          {/* Nav Buttons */}
-          {[
-            { id: 'dashboard', label: 'Minhas Tarefas', icon: <UserCheck size={20} />, onClick: () => { setActivePage('dashboard'); setDashboardFilter('all'); setActiveChatUserId(null); }, match: activePage === 'dashboard' && dashboardFilter === 'all' },
-            { id: 'priority', label: 'Favoritos', icon: <Star size={20} />, onClick: () => { setActivePage('priority'); setActiveChatUserId(null); }, match: activePage === 'priority' },
-            { id: 'meetings', label: 'Reuniões', icon: <Video size={20} />, onClick: () => { setActivePage('meetings'); setActiveChatUserId(null); }, match: activePage === 'meetings' },
-            { id: 'history', label: 'Histórico', icon: <BarChart3 size={20} />, onClick: () => { setActivePage('history'); setActiveChatUserId(null); }, match: activePage === 'history' },
-          ].map(item => (
-            <button
-              key={item.id}
-              onClick={item.onClick}
-              className={`w-full flex items-center justify-between p-3.5 rounded-2xl transition-all ${
-                item.match
-                  ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20'
-                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {item.icon}
-                <span className="font-bold text-sm">{item.label}</span>
-              </div>
-            </button>
-          ))}
-
-          {isGlobalViewer && (
-            <button
-              onClick={() => { setActivePage('team'); setActiveChatUserId(null); }}
-              className={`w-full flex items-center justify-between p-3.5 rounded-2xl transition-all ${
-                activePage === 'team'
-                  ? 'bg-rose-600 text-white shadow-xl shadow-rose-600/20'
-                  : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Users size={20} />
-                <span className="font-bold text-sm">Equipe</span>
-              </div>
-            </button>
-          )}
-
-          {/* Direct Messages */}
-          <div className="pt-8 px-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center justify-between">
-              Mensagens Diretas <MessageSquare size={12} />
-            </p>
+        <nav className="p-4 flex-1 custom-scroll overflow-y-auto space-y-6">
+          {/* PRINCIPAL Section */}
+          <div>
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 ml-2">Principal</p>
             <div className="space-y-1">
-              {displayUsers.filter(u => u.id !== currentUser.id).map(u => {
-                const unread = getUnreadCount(u.id);
-                const isActive = activePage === 'chat' && activeChatUserId === u.id;
-                return (
-                  <button
-                    key={u.id}
-                    onClick={() => { setActiveChatUserId(u.id); setActivePage('chat'); }}
-                    className={`group w-full flex items-center gap-3 p-2.5 rounded-2xl transition-all ${
-                      isActive
-                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600'
-                        : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <UserAvatar user={u} className="w-9 h-9" showStatus={true} />
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="text-xs font-bold truncate">{u.name}</p>
-                      <p className="text-[10px] opacity-60 truncate">
-                        {unread > 0 ? 'Nova mensagem!' : 'Enviar mensagem'}
-                      </p>
-                    </div>
-                    {unread > 0 && (
-                      <div className="bg-indigo-600 text-white text-[10px] font-black min-w-[20px] h-5 rounded-full flex items-center justify-center px-1.5 animate-bounce shadow-lg">
-                        {unread}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
+              {[
+                { id: 'dashboard', label: 'Minhas Tarefas', icon: <CheckCircle2 size={18} />, onClick: () => { setActivePage('dashboard'); setDashboardFilter('all'); setActiveChatUserId(null); }, match: activePage === 'dashboard' && dashboardFilter === 'all' },
+                { id: 'delayed', label: 'Atrasadas', icon: <Clock size={18} />, onClick: () => { setActivePage('dashboard'); setDashboardFilter('delayed'); setActiveChatUserId(null); }, match: activePage === 'dashboard' && dashboardFilter === 'delayed' },
+                { id: 'history', label: 'Histórico', icon: <BarChart3 size={18} />, onClick: () => { setActivePage('history'); setActiveChatUserId(null); }, match: activePage === 'history' },
+              ].map(item => (
+                <button
+                  key={item.id}
+                  onClick={item.onClick}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+                    item.match
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-500 hover:bg-slate-800/50'
+                  }`}
+                >
+                  <div className={item.match ? 'text-white' : 'text-indigo-500'}>{item.icon}</div>
+                  <span className="text-sm font-bold">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* EQUIPE Section */}
+          <div>
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 ml-2">Equipe</p>
+            <div className="space-y-1">
+              {[
+                { id: 'team', label: 'Equipe', icon: <Users size={18} />, count: users.length, onClick: () => { setActivePage('team'); setActiveChatUserId(null); }, match: activePage === 'team' },
+                { id: 'meetings', label: 'Reuniões', icon: <Video size={18} />, onClick: () => { setActivePage('meetings'); setActiveChatUserId(null); }, match: activePage === 'meetings' },
+                { id: 'messages', label: 'Mensagens', icon: <MessageSquare size={18} />, onClick: () => { setActivePage('chat'); }, match: activePage === 'chat' },
+              ].map(item => (
+                <button
+                  key={item.id}
+                  onClick={item.onClick}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${
+                    item.match
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-500 hover:bg-slate-800/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={item.match ? 'text-white' : 'text-indigo-500'}>{item.icon}</div>
+                    <span className="text-sm font-bold">{item.label}</span>
+                  </div>
+                  {item.count && (
+                    <span className="bg-indigo-500 text-[10px] font-black px-2 py-0.5 rounded-full text-white">
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* MEMBROS Section */}
+          <div>
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mb-3 ml-2">Membros</p>
+            <div className="space-y-1">
+              {users.map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => { setActiveChatUserId(u.id); setActivePage('chat'); }}
+                  className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all ${
+                    activeChatUserId === u.id && activePage === 'chat'
+                      ? 'bg-indigo-900/20 text-indigo-400 border border-indigo-500/20'
+                      : 'text-slate-500 hover:bg-slate-800/30'
+                  }`}
+                >
+                  <UserAvatar user={u} className="w-8 h-8" showStatus={true} />
+                  <span className="text-xs font-bold truncate uppercase">{u.name}</span>
+                  {u.id === currentUser.id && <span className="text-[8px] font-black text-slate-500 lowercase ml-auto self-center">eu</span>}
+                </button>
+              ))}
             </div>
           </div>
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-5 border-t border-slate-100 dark:border-slate-800 relative bg-slate-50/20 dark:bg-slate-950/20">
-          <div className="flex items-center justify-between mb-4 px-1">
-            <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${
-                visualConnectionStatus 
-                  ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' 
-                  : 'bg-rose-500'
-              }`} />
-              <span className="text-[10px] font-black uppercase tracking-tighter text-slate-400">
-                {visualConnectionStatus ? 'Sistema Online' : 'Desconectado'}
-              </span>
+        <div className="p-4 space-y-3">
+          <div className="bg-slate-800/40 rounded-3xl p-3 border border-slate-700/50 flex items-center gap-3 relative group transition-all hover:bg-slate-800/60 cursor-pointer" onClick={() => setUserMenuOpen(!userMenuOpen)}>
+            <div className="w-10 h-10 rounded-2xl bg-[#1A1D2B] border border-slate-700/50 flex items-center justify-center text-emerald-400 font-bold text-xs uppercase">
+              {currentUser.name[0]}
             </div>
-            {!visualConnectionStatus && (
-              <button 
-                onClick={() => { setRetryTrigger(prev => prev + 1); setVisualConnectionStatus(true); }}
-                className="text-[9px] font-black uppercase text-indigo-500 hover:text-indigo-600 underline underline-offset-2"
-              >
-                Reconectar
-              </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black truncate uppercase text-white leading-tight">{currentUser.name}</p>
+              <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{ROLE_LABELS[currentUser.role]}</p>
+            </div>
+            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+            
+            {userMenuOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#0F111A] rounded-2xl border border-slate-800 shadow-2xl p-2 z-[60] animate-in slide-in-from-bottom-2">
+                <button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-800 text-xs font-bold transition-colors"
+                >
+                  {theme === 'dark' ? <Sun size={16} className="text-amber-500" /> : <Moon size={16} className="text-indigo-500" />}
+                  Modo {theme === 'dark' ? 'Claro' : 'Escuro'}
+                </button>
+              </div>
             )}
           </div>
           
-          <button
-            onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="w-full flex items-center gap-3 p-2 rounded-2xl hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-100 dark:hover:border-slate-700 shadow-sm hover:shadow-md"
+          <button 
+            onClick={handleLogout}
+            className="w-full h-11 flex items-center justify-center gap-2 rounded-xl border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all group"
           >
-            <UserAvatar
-              user={{...currentUser, is_online: isRealtimeConnected && onlineUsers.has(currentUser?.id || '')}}
-              className="w-11 h-11"
-              showStatus={true}
-            />
-            <div className="text-left flex-1 min-w-0">
-              <div className="text-sm font-black truncate">{currentUser.name}</div>
-              <div className="text-[9px] font-black uppercase tracking-wider text-indigo-500">
-                {ROLE_LABELS[currentUser.role]}
-              </div>
-            </div>
+            <LogOut size={14} className="group-hover:-translate-x-1 transition-transform" />
+            Sair
           </button>
-
-          {userMenuOpen && (
-            <div className="absolute bottom-24 left-4 right-4 bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 p-2 z-50 animate-in slide-in-from-bottom-4">
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold transition-colors"
-              >
-                {theme === 'dark' ? <Sun size={18} className="text-amber-500" /> : <Moon size={18} className="text-indigo-500" />}
-                Modo {theme === 'dark' ? 'Claro' : 'Escuro'}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 text-xs font-bold transition-colors"
-              >
-                <LogOut size={18}/> Sair da Conta
-              </button>
-            </div>
-          )}
         </div>
       </aside>
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-1 flex flex-col min-w-0 bg-transparent relative">
-        {activeChatUserId && activePage === 'chat' ? (
-          <ChatView
-            currentUser={currentUser}
-            targetUser={processedUsers.find(u => u.id === activeChatUserId)!}
-            messages={privateMessages}
-            onSendMessage={handleSendMessage}
-            roleLabels={ROLE_LABELS}
-          />
-        ) : activePage === 'history' ? (
-          <HistoryView 
-            tasks={expandedTasks} 
-            users={processedUsers} 
-            currentUser={currentUser} 
-            onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }} 
-          />
-        ) : activePage === 'team' && isGlobalViewer ? (
-          <div className="p-4 sm:p-10 flex-1 flex flex-col min-h-0 overflow-hidden">
-            <h1 className="text-3xl font-black mb-6 flex-shrink-0">Equipe</h1>
-            <div className="flex-1 overflow-x-auto overflow-y-hidden pb-10">
-              <div className="flex gap-6 h-full items-start">
-                {displayUsers.map(user => (
-                  <div key={user.id} className="w-[450px] sm:w-[500px] flex-shrink-0 bg-white/80 dark:bg-slate-900/80 rounded-[40px] border border-white/40 dark:border-slate-800/40 shadow-xl backdrop-blur-md overflow-hidden transition-all hover:shadow-2xl flex flex-col h-full min-h-0">
-                    <TaskColumn
-                      {...columnProps}
-                      user={user}
-                      tasks={filteredTasks.filter(t => t.userId === user.id)}
-                      hideHeaderIdentity={false}
-                      pageContext="team"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Header */}
-            <header className="h-20 lg:h-24 flex items-center justify-between px-4 sm:px-10 bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl z-30 border-b border-white/20 dark:border-slate-800/20">
-              <div className="flex items-center gap-4 lg:gap-8 flex-1"> 
-                <button
-                  onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="p-2.5 lg:p-3 bg-white dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-2xl shadow-sm transition-all active:scale-90"
-                >
-                  <Menu size={20} className="lg:w-[22px] lg:h-[22px]" />
-                </button>
-                
-                <div className={`hidden sm:flex items-center gap-2 lg:gap-3 px-3 lg:px-5 py-2 lg:py-2.5 rounded-2xl border backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-700 ${
-                  isAdmin || isDeveloper 
-                    ? 'bg-rose-500/5 border-rose-500/20 text-rose-500 shadow-[0_0_25px_rgba(244,63,94,0.1)]' 
-                    : 'bg-indigo-500/5 border-indigo-500/20 text-indigo-500 shadow-[0_0_25px_rgba(99,102,241,0.1)]'
-                }`}>
-                  <div className={`w-1.5 lg:w-2 h-1.5 lg:h-2 rounded-full animate-pulse ${isAdmin || isDeveloper ? 'bg-rose-500' : 'bg-indigo-500'}`} />
-                  <span className="text-[8px] lg:text-[10px] font-black uppercase tracking-[0.2em] lg:tracking-[0.3em] whitespace-nowrap">
-                    {isAdmin || isDeveloper ? 'Visão Geral' : 'Minha Agenda'}
-                  </span>
-                </div>
-
-                <div className="relative w-full max-w-md hidden lg:block">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Pesquisar tarefas..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-11 pl-11 pr-5 bg-white/80 dark:bg-slate-900/80 rounded-[18px] text-sm font-medium outline-none focus:ring-4 ring-indigo-500/10 border border-slate-100 dark:border-slate-800 transition-all"
-                  />
-                </div>
+      <main className="flex-1 flex flex-col min-w-0 bg-[#090B11] relative">
+        {/* Header Section (Always Visible except in Chat/History/Team) */}
+        {activePage !== 'chat' && activePage !== 'history' && activePage !== 'team' && (
+          <header className="px-6 py-6 bg-[#0F111A] border-b border-slate-800/60 z-30">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col">
+                <h1 className="text-xl font-black text-white leading-tight">
+                  {activePage === 'dashboard' ? (dashboardFilter === 'delayed' ? 'Tarefas Atrasadas' : 'Minhas Tarefas') :
+                   activePage === 'priority' ? 'Favoritos' :
+                   activePage === 'meetings' ? 'Reuniões' : 'Equipe'}
+                </h1>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                  Visualize em Lista, Kanban ou Agenda
+                </p>
               </div>
 
-              <div className="flex items-center gap-2 lg:gap-4">
-                {/* Date Filter Controls */}
-                {viewType !== 'calendar' && activePage !== 'chat' && (
-                  <div className="flex items-center bg-slate-100 dark:bg-slate-900 p-1 rounded-[20px] border border-slate-200/50 dark:border-slate-800/50">
-                    <div className="flex items-center gap-1 px-2 border-r border-slate-200 dark:border-slate-800 mr-1">
-                      <Filter size={14} className="text-slate-400" />
-                      <select 
-                        value={listDateFilter}
-                        onChange={(e) => setListDateFilter(e.target.value as any)}
-                        className="bg-transparent text-[10px] font-black uppercase tracking-tight outline-none cursor-pointer text-slate-600 dark:text-slate-400"
-                      >
-                        <option value="day">Dia</option>
-                        <option value="week">Semana</option>
-                        <option value="month">Mês</option>
-                        <option value="year">Ano</option>
-                        <option value="all">Tudo</option>
-                      </select>
-                    </div>
+              <div className="relative flex-1 max-w-xl mx-8">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <input
+                  type="text"
+                  placeholder="Buscar tarefa..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-10 pl-11 pr-5 bg-[#1A1D2B] rounded-xl text-xs font-bold text-slate-300 outline-none border border-slate-700/50 focus:border-indigo-500/50 transition-all placeholder:text-slate-600"
+                />
+              </div>
 
-                    {listDateFilter !== 'all' && (
-                      <div className="flex items-center gap-2 px-2">
-                        <button onClick={() => handleDateNav('prev')} className="p-1 hover:text-indigo-600 transition-colors">
-                          <ChevronLeft size={16} />
-                        </button>
-                        <span className="text-[10px] font-black uppercase tracking-tighter min-w-[80px] text-center">
-                          {getFilterLabel()}
-                        </span>
-                        <button onClick={() => handleDateNav('next')} className="p-1 hover:text-indigo-600 transition-colors">
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* View Type Switcher */}
-                <div className="hidden sm:flex bg-slate-100 dark:bg-slate-900 p-1 rounded-[20px] border border-slate-200/50 dark:border-slate-800/50">
+              <div className="flex items-center gap-2">
+                <div className="flex bg-[#1A1D2B] p-1 rounded-xl border border-slate-700/40">
                   {[
-                    { type: 'list' as const, icon: <List size={14}/>, title: 'Lista' },
-                    { type: 'kanban' as const, icon: <LayoutGrid size={14}/>, title: 'Kanban' },
-                    { type: 'calendar' as const, icon: <CalendarIcon size={14}/>, title: 'Agenda' },
+                    { id: 'all', label: 'Todas' },
+                    { id: 'open', label: 'Em Aberto' },
+                    { id: 'delayed', label: 'Atrasadas' },
+                    { id: 'high', label: 'Alta' }
+                  ].map(f => (
+                    <button 
+                      key={f.id}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${
+                        (f.id === 'all' && dashboardFilter === 'all' && activePage === 'dashboard') || 
+                        (f.id === 'delayed' && dashboardFilter === 'delayed') ||
+                        (f.id === 'high' && activePage === 'priority')
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                        : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                      onClick={() => {
+                        if (f.id === 'all') { setDashboardFilter('all'); setActivePage('dashboard'); }
+                        if (f.id === 'delayed') { setDashboardFilter('delayed'); setActivePage('dashboard'); }
+                        if (f.id === 'high') setActivePage('priority');
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex bg-[#1A1D2B] p-1 rounded-xl border border-slate-700/40 ml-2">
+                  {[
+                    { type: 'list' as const, icon: <List size={16}/> },
+                    { type: 'kanban' as const, icon: <LayoutGrid size={16}/> },
+                    { type: 'calendar' as const, icon: <CalendarIcon size={16}/> },
                   ].map(v => (
                     <button
                       key={v.type}
                       onClick={() => setViewType(v.type)}
-                      className={`p-2 lg:px-4 lg:py-2 rounded-[16px] transition-all ${
+                      className={`p-1.5 rounded-lg transition-all ${
                         viewType === v.type
-                          ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
-                          : 'text-slate-400 hover:text-slate-600'
+                          ? 'bg-indigo-600 text-white shadow-lg'
+                          : 'text-slate-500 hover:text-slate-300'
                       }`}
-                      title={v.title}
                     >
                       {v.icon}
                     </button>
                   ))}
                 </div>
 
-                {/* Show Completed Toggle */}
                 <button
-                  onClick={() => setShowCompleted(!showCompleted)}
-                  className={`hidden md:flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
-                    showCompleted
-                      ? 'bg-emerald-50 border-emerald-100 text-emerald-600'
-                      : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500'
-                  }`}
+                  onClick={() => setIsTaskModalOpen(true)}
+                  className="ml-4 h-10 bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center gap-2 shadow-xl shadow-indigo-600/30 transition-all active:scale-95"
                 >
-                  {showCompleted ? <Eye size={14} /> : <EyeOff size={14} />}
+                  <Plus size={16} />
+                  + Nova Tarefa
                 </button>
-
-                {/* New Task Button */}
-                {((activePage === 'dashboard' && dashboardFilter !== 'completed' && dashboardFilter !== 'delayed') || activePage === 'priority' || activePage === 'meetings' || activePage === 'team') && (
-                  <button
-                    onClick={() => setIsTaskModalOpen(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 lg:px-8 py-2.5 lg:py-3.5 rounded-xl lg:rounded-2xl font-black uppercase tracking-widest text-[10px] lg:text-xs flex items-center gap-2 shadow-2xl shadow-indigo-600/30 transition-all active:scale-95 group"
-                  >
-                    <Plus size={18} className="group-hover:rotate-90 transition-transform" />
-                    <span className="hidden sm:inline">
-                      {activePage === 'meetings' ? 'Nova Reunião' : 'Nova Tarefa'}
-                    </span>
-                  </button>
-                )}
               </div>
-            </header>
+            </div>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scroll bg-slate-50/10 dark:bg-slate-900/10">
+            {/* Filters Bar (Date & Tags) */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-800/40">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-slate-500 uppercase">Data:</span>
+                  <div className="flex items-center gap-2 bg-[#1A1D2B] px-3 py-1.5 rounded-lg border border-slate-700/40">
+                    <input 
+                      type="date" 
+                      value={toDateString(referenceDate)}
+                      onChange={(e) => setReferenceDate(parseLocalDate(e.target.value))}
+                      className="bg-transparent text-[10px] font-black text-slate-300 outline-none"
+                    />
+                    <CalendarIcon size={12} className="text-slate-500" />
+                  </div>
+                </div>
+                <button onClick={() => setReferenceDate(new Date())} className="bg-indigo-900/30 text-indigo-400 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase border border-indigo-500/20 hover:bg-indigo-900/50 transition-all">Hoje</button>
+                <button onClick={() => { setListDateFilter('all'); setReferenceDate(new Date()); setSearchQuery(''); }} className="text-slate-500 hover:text-rose-500 px-2 py-1.5 text-[10px] font-black uppercase transition-all flex items-center gap-1">
+                  <X size={12} /> Limpar
+                </button>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
+                  <Filter size={10} /> Tag:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: 'Projeto', color: 'bg-indigo-900/40 text-indigo-400 border-indigo-500/30' },
+                    { label: 'Financeiro', color: 'bg-emerald-900/40 text-emerald-400 border-emerald-500/30' },
+                    { label: 'Urgente', color: 'bg-orange-900/40 text-orange-400 border-orange-500/30' },
+                    { label: 'CONCILIAR', color: 'bg-sky-900/40 text-sky-400 border-sky-500/30' },
+                    { label: 'RELATÓRIOS', color: 'bg-purple-900/40 text-purple-400 border-purple-500/30' },
+                    { label: 'PAGAR', color: 'bg-rose-900/40 text-rose-400 border-rose-500/30' },
+                    { label: 'Reunião', color: 'bg-blue-900/40 text-blue-400 border-blue-500/30' },
+                    { label: 'BOLETOS', color: 'bg-cyan-900/40 text-cyan-400 border-cyan-500/30' },
+                  ].map(tag => (
+                    <button key={tag.label} className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase border transition-all hover:scale-105 ${tag.color}`}>
+                      {tag.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </header>
+        )}
+
+        <div className="flex-1 overflow-hidden flex flex-col relative">
+
+          {activeChatUserId && activePage === 'chat' ? (
+            <ChatView
+              currentUser={currentUser}
+              targetUser={processedUsers.find(u => u.id === activeChatUserId)!}
+              messages={privateMessages}
+              onSendMessage={handleSendMessage}
+              roleLabels={ROLE_LABELS}
+            />
+          ) : activePage === 'history' ? (
+            <HistoryView 
+              tasks={expandedTasks} 
+              users={processedUsers} 
+              currentUser={currentUser} 
+              onViewTask={(t) => { setViewingTask(t); setIsDetailsModalOpen(true); }} 
+            />
+          ) : activePage === 'team' && isGlobalViewer ? (
+            <div className="p-4 sm:p-10 flex-1 flex flex-col min-h-0 overflow-hidden bg-[#090B11]">
+              <h1 className="text-3xl font-black mb-6 flex-shrink-0 text-white uppercase tracking-tighter">Equipe</h1>
+              <div className="flex-1 overflow-x-auto overflow-y-hidden pb-10">
+                <div className="flex gap-6 h-full items-start">
+                  {displayUsers.map(user => (
+                    <div key={user.id} className="w-[450px] sm:w-[500px] flex-shrink-0 bg-[#0F111A] rounded-[32px] border border-slate-800/60 shadow-2xl overflow-hidden flex flex-col h-full min-h-0">
+                      <TaskColumn
+                        {...columnProps}
+                        user={user}
+                        tasks={filteredTasks.filter(t => t.userId === user.id)}
+                        hideHeaderIdentity={false}
+                        pageContext="team"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scroll bg-[#090B11]">
               <div className="max-w-7xl mx-auto h-full">
                 {viewType === 'list' && displayUsers.map(user => (
-                  <div key={user.id} className="bg-white/80 dark:bg-slate-900/80 rounded-[40px] border border-white/40 dark:border-slate-800/40 shadow-xl backdrop-blur-md overflow-hidden mb-10 transition-all hover:shadow-2xl">
+                  <div key={user.id} className="bg-[#0F111A] rounded-[32px] border border-slate-800/60 shadow-2xl overflow-hidden mb-10 transition-all">
                     <TaskColumn
                       {...columnProps}
                       user={user}
@@ -820,8 +816,8 @@ export default function App() {
                 )}
               </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </main>
 
       {/* ── MODAIS ── */}
@@ -829,28 +825,28 @@ export default function App() {
       {/* Modal de Conclusão */}
       {taskToComplete && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-300 border border-indigo-100 dark:border-slate-800 p-8 flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 mb-6">
+          <div className="bg-[#0F111A] rounded-[32px] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-300 border border-slate-800/60 p-8 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-400 mb-6">
                <HelpCircle size={32} />
             </div>
-            <h3 className="text-xl font-black text-slate-800 dark:text-white mb-2 uppercase tracking-tight">
+            <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight">
               Conclusão de Tarefa
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 font-medium">
+            <p className="text-sm text-slate-500 mb-8 font-medium">
               Essa tarefa teve execução física?
             </p>
             
             <div className="grid grid-cols-2 gap-4 w-full">
                <button 
                 onClick={() => confirmCompletion('normal')}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-emerald-600 hover:bg-emerald-100 transition-all group"
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-900/40 transition-all group"
                >
                   <Check size={24} className="group-hover:scale-110 transition-transform" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Sim (Normal)</span>
                </button>
                <button 
                 onClick={() => confirmCompletion('sem_movimento')}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 text-amber-600 hover:bg-amber-100 transition-all group"
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-amber-900/20 border border-amber-500/20 text-amber-400 hover:bg-amber-900/40 transition-all group"
                >
                   <Ban size={24} className="group-hover:scale-110 transition-transform" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Não (S. Mov.)</span>
@@ -859,7 +855,7 @@ export default function App() {
             
             <button 
               onClick={() => setTaskToComplete(null)}
-              className="mt-6 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
+              className="mt-6 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300"
             >
               Cancelar
             </button>
@@ -887,11 +883,11 @@ export default function App() {
                 );
                 if (choice) editMode = 'SERIES';
               }
-
+  
               // 2. Atualização Otimista com Proteção
               const updatedTaskLocally = { ...viewingTask, ...d, id: tempId, isVirtual: false, subtasks: d.subtasks };
               setTasks(prev => [...prev.filter(t => t.id !== viewingTask.id), updatedTaskLocally]);
-
+  
               if (editMode === 'SINGLE') {
                 if (viewingTask.isVirtual) {
                   const { isVirtual, id: oldId, ...payload } = viewingTask;
@@ -902,6 +898,7 @@ export default function App() {
                     subtasks: JSON.stringify(d.subtasks), recurrence: 'NONE',
                     recurrenceRule: null, recurrenceEndDate: null,
                     startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
+                    priority: d.priority, tags: d.tags
                   }]).select();
                   if (error) throw error;
                   if (data) {
@@ -914,20 +911,19 @@ export default function App() {
                     dueDate: toDateString(d.dueDate), userId: d.userId, type: d.type,
                     subtasks: JSON.stringify(d.subtasks),
                     startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
+                    priority: d.priority, tags: d.tags
                   }).eq('id', viewingTask.id);
                   if (error) throw error;
                   setTasks(prev => prev.map(t => t.id === tempId ? { ...t, id: viewingTask.id } : t));
                 }
               } else {
-                // MODO SERIES: Atualiza o mestre/grupo
+                // MODO SERIES
                 const groupId = viewingTask.recurrenceGroupId;
                 if (!groupId) {
                     alert("Erro: Grupo de recorrência não encontrado.");
                     fetchData(true);
                     return;
                 }
-
-                // Atualizar o registro mestre (pode ser o próprio viewingTask ou outro)
                 const { error } = await supabase.from('tasks').update({
                   title: d.title, description: d.description,
                   userId: d.userId, type: d.type,
@@ -935,10 +931,8 @@ export default function App() {
                   recurrenceRule: d.recurrenceRule,
                   recurrenceEndDate: d.recurrenceEndDate ? toDateString(d.recurrenceEndDate) : null,
                   startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
-                }).eq('recurrenceGroupId', groupId); // Atualiza todos do grupo ou apenas o mestre? 
-                // Na nossa lógica de expansão, o master é quem gera. Vamos atualizar todos do grupo que não foram concluídos/modificados?
-                // O mais simples e seguro para o sistema atual é atualizar todos os registros reais do grupo.
-                
+                  priority: d.priority, tags: d.tags
+                }).eq('recurrenceGroupId', groupId);
                 if (error) throw error;
                 fetchData(true);
               }
@@ -954,6 +948,8 @@ export default function App() {
                 status: 'OPEN', completion_type: 'normal', type: d.type,
                 startTime: d.startTime, endTime: d.endTime, isAllDay: d.isAllDay,
                 subtasks: JSON.stringify(d.subtasks),
+                priority: d.priority,
+                tags: d.tags
               };
               const { data, error } = await supabase.from('tasks').insert([payload]).select();
               if (error) throw error;
@@ -991,7 +987,7 @@ export default function App() {
       {chatNotification && (
         <div
           onClick={() => { setActiveChatUserId(chatNotification.fromUserId); setActivePage('chat'); setChatNotification(null); }}
-          className="fixed bottom-8 right-8 z-[200] w-80 bg-white dark:bg-slate-900 rounded-[28px] shadow-2xl border border-indigo-100 dark:border-indigo-900/50 p-5 animate-in slide-in-from-right-10 duration-500 cursor-pointer hover:scale-[1.02] transition-all ring-4 ring-indigo-500/10"
+          className="fixed bottom-8 right-8 z-[200] w-80 bg-[#0F111A] rounded-[28px] shadow-2xl border border-indigo-900/50 p-5 animate-in slide-in-from-right-10 duration-500 cursor-pointer hover:scale-[1.02] transition-all ring-4 ring-indigo-500/10"
         >
           <div className="flex items-center gap-4">
             <UserAvatar
@@ -1001,17 +997,17 @@ export default function App() {
             />
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start">
-                <p className="text-xs font-black uppercase text-indigo-600 truncate">
+                <p className="text-xs font-black uppercase text-indigo-400 truncate">
                   {processedUsers.find(u => u.id === chatNotification.fromUserId)?.name || 'Nova Mensagem'}
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); setChatNotification(null); }}
-                  className="text-slate-300 hover:text-slate-500 transition-colors"
+                  className="text-slate-500 hover:text-white transition-colors"
                 >
                   <X size={16} />
                 </button>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 truncate mt-1 font-medium">
+              <p className="text-sm text-slate-300 truncate mt-1 font-medium">
                 {chatNotification.type === 'file' ? '📄 Recebeu um arquivo' : chatNotification.text}
               </p>
             </div>

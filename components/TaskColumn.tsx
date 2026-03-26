@@ -266,25 +266,28 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
 
   return (
     <div className="h-full min-h-0 w-full flex flex-col group/section">
-      <div className="flex items-center gap-3 px-6 py-4 bg-white/40 dark:bg-slate-900/40 border-b border-gray-100 dark:border-slate-800">
-        <button onClick={() => setIsCollapsed(!isCollapsed)} className={`p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-400 transition-all ${isCollapsed ? '-rotate-90' : ''}`}><ChevronDown size={18} /></button>
+      <div className="flex items-center gap-3 px-6 py-5 bg-[#0F111A]/80 backdrop-blur-md border-b border-slate-800/60">
+        <button onClick={() => setIsCollapsed(!isCollapsed)} className={`p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 transition-all ${isCollapsed ? '-rotate-90' : ''}`}><ChevronDown size={18} /></button>
         
         {!hideHeaderIdentity && (
-            <div className="flex items-center gap-3">
-                 <div className={`p-2 rounded-xl shadow-sm ${badge.color}`}>{badge.icon}</div>
+            <div className="flex items-center gap-4">
+                 <div className={`p-2.5 rounded-2xl shadow-lg ${badge.color} border border-white/5`}>{badge.icon}</div>
                  <div className="flex flex-col">
-                    <h2 className="font-bold text-base text-slate-800 dark:text-white leading-tight">{user.name}</h2>
-                    <span className={`text-[9px] uppercase font-black tracking-widest ${badge.color} px-1 rounded`}>{badge.label}</span>
+                    <h2 className="font-black text-sm text-white uppercase tracking-tight leading-tight">{user.name}</h2>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-[8px] uppercase font-black tracking-widest ${badge.color} px-1.5 py-0.5 rounded-md border border-white/5`}>{badge.label}</span>
+                      <span className="text-[10px] font-bold text-slate-500 tabular-nums bg-slate-800/40 px-1.5 rounded-md border border-slate-700/20">{tasks.length} {tasks.length === 1 ? 'item' : 'itens'}</span>
+                    </div>
                  </div>
             </div>
         )}
 
         {(isViewerMaster || isViewerAdmin) && (
           <div className="relative ml-auto" ref={menuRef}>
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="opacity-0 group-hover/section:opacity-100 p-2 text-slate-400"><MoreHorizontal size={18} /></button>
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="opacity-0 group-hover/section:opacity-100 p-2 text-slate-500 hover:text-slate-300 transition-all"><MoreHorizontal size={18} /></button>
               {isMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-gray-100 dark:border-slate-800 z-50 py-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-                      <button onClick={() => { onRenameUser(user.id, window.prompt("Novo nome:", user.name) || user.name); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800">Renomear Colaborador</button>
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-[#0F111A] rounded-2xl shadow-2xl border border-slate-800/60 z-50 py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                      <button onClick={() => { onRenameUser(user.id, window.prompt("Novo nome:", user.name) || user.name); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-slate-800 transition-colors">Renomear Colaborador</button>
                       {isViewerMaster && (
                         <button onClick={() => { 
                           const roles: Record<string, string> = { 'OPERATOR': 'OPERADOR', 'ADMIN': 'GESTORA', 'DEVELOPER': 'DESENVOLVEDOR' };
@@ -294,9 +297,10 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
                             onChangeRole(user.id, nextRole as any);
                           }
                           setIsMenuOpen(false);
-                        }} className="w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800">Alterar Cargo</button>
+                        }} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-slate-800 transition-colors tracking-tight">Alterar Cargo Hierárquico</button>
                       )}
-                      <button onClick={() => onDeleteUser(user.id)} className="w-full text-left px-4 py-2.5 hover:bg-rose-50 text-rose-600">Remover do Sistema</button>
+                      <div className="h-px bg-slate-800/60 my-1 mx-2"></div>
+                      <button onClick={() => onDeleteUser(user.id)} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-rose-500 hover:bg-rose-900/20 transition-colors">Remover Colaborador</button>
                   </div>
               )}
           </div>
@@ -305,17 +309,17 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
 
       {!isCollapsed && (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="min-w-[700px] lg:min-w-0 grid grid-cols-[50px_1fr_100px_100px_80px_120px_80px] lg:grid-cols-[60px_1fr_110px_110px_90px_140px_90px] gap-2 px-4 py-2 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-800/10">
-                <div className="text-[10px] font-black text-slate-400 uppercase text-center">OK</div>
-                <div className="text-[10px] font-black text-slate-400 uppercase px-2">{isMeetingContext ? 'Assunto / Pauta' : 'Tarefa / Descrição'}</div>
-                <div className="text-[10px] font-black text-slate-400 uppercase">Responsável</div>
-                <div className="text-[10px] font-black text-slate-400 uppercase">Vencimento</div>
-                <div className="text-[10px] font-black text-slate-400 uppercase">Prioridade</div>
-                <div className="text-[10px] font-black text-slate-400 uppercase">Status</div>
-                <div className="text-[10px] font-black text-slate-400 uppercase text-right pr-8">Ações</div>
+            <div className="grid grid-cols-[50px_1fr_120px_110px_90px_110px_60px] gap-4 px-6 py-2.5 border-b border-slate-800/60 bg-[#1A1D2B]/30">
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">#</div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{isMeetingContext ? 'REUNIÃO' : 'TAREFA'}</div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">RESPONSÁVEL</div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">DATA/HORA</div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">PRIORIDADE</div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">STATUS</div>
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">AÇÕES</div>
             </div>
 
-            <div className="flex-1 overflow-y-auto min-w-[700px] lg:min-w-0 custom-scroll pb-10">
+            <div className="flex-1 overflow-y-auto custom-scroll pb-10">
               <DndContext 
                 sensors={sensors} 
                 collisionDetection={closestCenter} 
@@ -362,17 +366,17 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
               </DndContext>
 
               {showAddTaskButton && (
-                <button onClick={() => onOpenAddTask(user.id)} className="flex items-center gap-3 group px-8 py-5 text-slate-400 hover:text-indigo-600 transition-all text-sm w-full text-left hover:bg-indigo-50/20">
-                    <div className="w-5 h-5 rounded-lg border-2 border-slate-300 border-dashed flex items-center justify-center"><Plus size={12} /></div>
-                    <span className="font-bold">Nova {labelPrefix.toLowerCase()} para {user.name.split(' ')[0]}</span>
+                <button onClick={() => onOpenAddTask(user.id)} className="flex items-center gap-4 group px-8 py-6 text-slate-500 hover:text-indigo-400 transition-all text-[13px] w-full text-left hover:bg-indigo-900/10 border-b border-dashed border-slate-800/40">
+                    <div className="w-5 h-5 rounded-lg border-2 border-slate-700 border-dashed flex items-center justify-center group-hover:border-indigo-500 transition-colors"><Plus size={12} /></div>
+                    <span className="font-black uppercase text-[10px] tracking-widest">Adicionar nova {labelPrefix.toLowerCase()} para {user.name.split(' ')[0]}</span>
                 </button>
               )}
 
               {showCompleted && completedTasks.length > 0 && (
-                <div className="mt-8 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-bottom-2">
-                  <div className="px-8 py-4 bg-slate-50/50 dark:bg-slate-900/50 flex items-center gap-3">
-                     <CheckCircle size={16} className="text-emerald-500" />
-                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">{labelPrefix}s Concluídas ({completedTasks.length})</h3>
+                <div className="mt-8 border-t border-slate-800/60 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="px-8 py-5 bg-[#0F111A]/40 flex items-center gap-3">
+                     <CheckCircle size={14} className="text-emerald-500" />
+                     <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">{labelPrefix}s Concluídas ({completedTasks.length})</h3>
                   </div>
                   {completedTasks.map((task, index) => (
                       <TaskItem key={task.id} task={task} assignee={user} allUsers={allUsers} currentUser={currentUser} onToggle={onToggleTask} onUpdateStatus={onUpdateStatus} onDelete={onDeleteTask} onEdit={onEditTask} onViewTask={onViewTask} onToggleStar={onToggleStar} onReassignTask={onReassignTask} onChangeOrder={onChangeOrder} index={activeTasks.length + index} onEnrich={()=>{}} />

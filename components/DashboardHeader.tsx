@@ -19,15 +19,19 @@ interface DashboardHeaderProps {
   selectedTaskIds: string[];
   onBulkComplete: () => void;
   onBulkDelete: () => void;
+  onSelectAll?: () => void;
+  totalFiltered?: number;
 }
 
 export const DashboardHeader = React.memo<DashboardHeaderProps>(({
   activePage, dashboardFilter, searchQuery, setSearchQuery,
   viewType, setViewType, setIsTaskModalOpen,
   referenceDate, setReferenceDate, setListDateFilter,
-  selectedTaskIds, onBulkComplete, onBulkDelete
+  selectedTaskIds, onBulkComplete, onBulkDelete,
+  onSelectAll, totalFiltered = 0
 }) => {
   const hasSelection = selectedTaskIds.length > 0;
+  const isDelayedView = activePage === 'dashboard' && dashboardFilter === 'delayed';
 
   return (
     <header className="px-6 py-6 bg-[#0F111A] border-b border-slate-800/60 z-30">
@@ -38,9 +42,19 @@ export const DashboardHeader = React.memo<DashboardHeaderProps>(({
              activePage === 'priority' ? 'Favoritos' :
              activePage === 'meetings' ? 'Reuniões' : 'Equipe'}
           </h1>
-          <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mt-1">
-            {hasSelection ? `${selectedTaskIds.length} selecionadas` : 'Visualize em Lista, Kanban ou Agenda'}
-          </p>
+          <div className="flex items-center gap-3 mt-1">
+            <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
+              {hasSelection ? `${selectedTaskIds.length} selecionadas` : 'Visualize em Lista, Kanban ou Agenda'}
+            </p>
+            {isDelayedView && totalFiltered > 0 && selectedTaskIds.length < totalFiltered && onSelectAll && (
+              <button 
+                onClick={onSelectAll}
+                className="text-[9px] font-black text-indigo-400 hover:text-indigo-300 uppercase tracking-widest bg-indigo-900/20 px-2 py-0.5 rounded-md border border-indigo-500/20 transition-all hover:bg-indigo-900/40"
+              >
+                Selecionar Todas ({totalFiltered})
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="relative flex-1 max-w-xl mx-8">

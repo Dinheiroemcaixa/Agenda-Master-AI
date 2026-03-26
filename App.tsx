@@ -247,7 +247,7 @@ export default function App() {
     
     try {
       const now = new Date().toISOString();
-      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual-'));
+      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual_'));
       if (persistentIds.length > 0) {
         await supabase.from('tasks')
           .update({ completed: true, status: 'COMPLETED', "completedAt": now })
@@ -268,7 +268,8 @@ export default function App() {
     if (!window.confirm(`Deseja EXCLUIR DEFINITIVAMENTE as ${selectedTaskIds.length} tarefas selecionadas?`)) return;
     
     try {
-      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual-'));
+      // Correção: IDs virtuais usam "_" como separador, não "-"
+      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual_'));
       if (persistentIds.length > 0) {
         await supabase.from('tasks').delete().in('id', persistentIds);
       }
@@ -278,6 +279,11 @@ export default function App() {
       console.error("Erro ao excluir tarefas em massa:", err);
     }
   }, [selectedTaskIds, setTasks]);
+
+  const handleSelectAll = useCallback(() => {
+    const allFilteredIds = filteredTasks.map(t => t.id);
+    setSelectedTaskIds(allFilteredIds);
+  }, [filteredTasks]);
 
   const filteredTasks = useMemo(() => {
     const todayStr = toDateString(new Date());
@@ -583,6 +589,8 @@ export default function App() {
             selectedTaskIds={selectedTaskIds}
             onBulkComplete={handleBulkComplete}
             onBulkDelete={handleBulkDelete}
+            onSelectAll={handleSelectAll}
+            totalFiltered={filteredTasks.length}
           />
         )}
 

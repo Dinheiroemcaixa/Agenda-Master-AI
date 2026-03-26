@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Task, User, TaskStatus } from '../types';
 import { UserAvatar } from './UserAvatar';
-import { Calendar, MoreHorizontal, Trash2, Pencil, Flag, Clock, Ban, CheckCircle2, GripVertical, Video, Send, ChevronDown, List, AlignLeft } from 'lucide-react';
+import { Calendar, MoreHorizontal, Trash2, Pencil, Flag, Clock, Ban, CheckCircle2, GripVertical, Video, Send, ChevronDown, List, AlignLeft, Pin, Repeat, FileText, X } from 'lucide-react';
 
 interface TaskItemProps {
   task: Task;
@@ -111,7 +111,7 @@ export const TaskItem = React.memo<TaskItemProps>(({
     <div 
         ref={dragRef}
         style={dragStyle}
-        className={`group grid grid-cols-[50px_1fr_120px_110px_90px_110px_60px] gap-4 px-6 py-4 border-b border-slate-800/40 items-center text-[13px] transition-all duration-200 relative
+        className={`group grid grid-cols-[50px_1fr_120px_110px_90px_110px_100px] gap-4 px-6 py-4 border-b border-slate-800/40 items-center text-[13px] transition-all duration-200 relative
             ${isOverlay ? 'bg-[#1A1D2B] shadow-2xl scale-[1.02] z-50 rounded-2xl border border-indigo-500/30 cursor-grabbing' : 'hover:bg-[#151824] cursor-pointer'}
             ${task.completed ? 'opacity-50' : ''}
         `}
@@ -133,40 +133,44 @@ export const TaskItem = React.memo<TaskItemProps>(({
 
       {/* TAREFA */}
       <div className="min-w-0 pr-4">
-         <div className="flex items-center gap-3 mb-1">
+         <div className="flex items-center gap-3">
             <button 
                 disabled={!canEdit}
                 onClick={(e) => { e.stopPropagation(); onToggle(task.id); }}
-                className={`relative z-10 w-4.5 h-4.5 rounded-lg border flex items-center justify-center transition-all ${!canEdit ? 'cursor-not-allowed opacity-50' : ''} ${task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-700 bg-slate-900/50 hover:border-indigo-500'}`}
+                className={`relative z-10 w-4.5 h-4.5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${!canEdit ? 'cursor-not-allowed opacity-50' : ''} ${task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-700 bg-slate-900/50 hover:border-indigo-500'}`}
             >
                 {task.completed && <CheckCircle2 size={12} />}
             </button>
             <span className={`font-bold truncate tracking-tight transition-all ${task.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
               {task.title}
             </span>
-            <div className="flex items-center gap-1.5 shrink-0">
-               {task.description && (
-                  <AlignLeft size={10} className="text-slate-500" title="Tem anotações" />
-               )}
-               {task.subtasks && task.subtasks.length > 0 && (
-                  <div className="flex items-center gap-0.5 text-slate-500" title={`${task.subtasks.length} subtarefas`}>
-                     <List size={10} />
-                     <span className="text-[8px] font-black">{task.subtasks.length}</span>
-                  </div>
-               )}
-            </div>
             {task.isStarred && <Flag size={12} className="text-rose-500 fill-rose-500 shrink-0" />}
+            {task.type === 'meeting' && <Video size={12} className="text-sky-400 shrink-0" />}
          </div>
-         <div className="flex items-center gap-2">
-            {task.type === 'meeting' && <Video size={12} className="text-sky-400" />}
+         <div className="flex flex-wrap items-center gap-2 mt-1 pl-7">
             {task.tags && task.tags.length > 0 && (
               <div className="flex gap-1 overflow-hidden">
                 {task.tags.map(t => (
-                  <span key={t} className="px-1.5 py-0.5 rounded-md bg-slate-800/50 text-slate-500 text-[8px] font-black uppercase border border-slate-700/30 whitespace-nowrap">{t}</span>
+                  <span key={t} className="px-2 py-0.5 rounded-full bg-slate-800 text-sky-400 text-[9px] font-black uppercase border border-sky-500/30 whitespace-nowrap">{t}</span>
                 ))}
               </div>
             )}
-            {!task.tags?.length && task.description && <p className="text-[10px] text-slate-500 truncate">{task.description}</p>}
+            
+            {(task.recurrenceRule || task.recurrenceGroupId) && (
+              <span className="px-2 py-0.5 rounded-full bg-purple-900/40 text-purple-400 text-[9px] font-black uppercase border border-purple-500/30 whitespace-nowrap flex items-center gap-1 leading-none">
+                <Repeat size={10} /> Recorrente
+              </span>
+            )}
+            
+            {task.subtasks && task.subtasks.length > 0 && (
+              <div className="flex items-center gap-1 text-rose-500 text-[9px] font-black leading-none" title="Subtarefas">
+                 <Pin size={10} className="fill-rose-500 rotate-45"/>
+                 <span className="flex items-center gap-1">
+                   {task.subtasks.filter(st => st.completed).length}/{task.subtasks.length}
+                   <ChevronDown size={10} />
+                 </span>
+              </div>
+            )}
          </div>
       </div>
 
@@ -209,38 +213,53 @@ export const TaskItem = React.memo<TaskItemProps>(({
       </div>
 
       {/* AÇÕES */}
-      <div className="flex items-center justify-end relative" ref={menuRef} onClick={e => e.stopPropagation()}>
-         <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); setIsTransferMenuOpen(false); }} className={`p-2 rounded-xl transition-all ${isMenuOpen || isHovered ? 'text-white bg-indigo-600 shadow-lg shadow-indigo-600/20' : 'text-slate-600 hover:text-slate-400'}`}><MoreHorizontal size={18} /></button>
-         {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-44 bg-[#0F111A] rounded-2xl shadow-2xl border border-slate-800/60 z-[100] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                {canEdit && <button onClick={() => { onEdit(task); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-slate-300 hover:bg-slate-800/50 flex items-center gap-3 transition-colors"><Pencil size={14} className="text-slate-500"/> Editar Tarefa</button>}
-                {canEdit && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setIsTransferMenuOpen(!isTransferMenuOpen); }} 
-                    className={`w-full text-left px-4 py-2.5 text-[11px] font-bold flex items-center justify-between gap-3 transition-colors hover:bg-slate-800/50 ${isTransferMenuOpen ? 'text-indigo-400 bg-indigo-900/20' : 'text-slate-300'}`}
-                  >
-                    <div className="flex items-center gap-3"><Send size={14} className="text-slate-500"/> Encaminhar</div>
-                    <ChevronDown size={12} className={`transition-transform duration-200 ${isTransferMenuOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                )}
-                {isTransferMenuOpen && (
-                  <div className="bg-slate-900/50 py-1 border-y border-slate-800/60 max-h-40 overflow-y-auto custom-scroll">
-                    {allUsers.filter(u => u.id !== task.userId).map(u => (
-                      <button 
-                        key={u.id} 
-                        onClick={() => { onReassignTask(task.id, u.id); setIsMenuOpen(false); setIsTransferMenuOpen(false); }}
-                        className="w-full text-left px-7 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-indigo-400 hover:bg-slate-800 transition-colors truncate"
-                      >
-                        {u.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {canEdit && <button onClick={() => { onDelete(task.id); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-rose-500 hover:bg-rose-900/20 flex items-center gap-3 transition-colors"><Trash2 size={14}/> Excluir permanentemente</button>}
-                <div className="h-px bg-slate-800/60 my-1 mx-2"></div>
-                <button onClick={() => { onViewTask(task); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-slate-400 hover:bg-slate-800/50 flex items-center gap-3 transition-colors"><Clock size={14}/> Detalhes e Histórico</button>
-            </div>
+      <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+         {task.description && (
+           <button onClick={() => onViewTask(task)} className="p-1.5 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-slate-800 transition-colors" title="Ver anotações">
+              <FileText size={14} />
+           </button>
          )}
+         {canEdit && (
+           <button onClick={() => onEdit(task)} className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-400 hover:bg-slate-800 transition-colors bg-slate-900/40" title="Editar Tarefa">
+              <Pencil size={14} />
+           </button>
+         )}
+         {canEdit && (
+           <button onClick={() => onDelete(task.id)} className="p-1.5 rounded-lg text-slate-600 hover:text-rose-500 hover:bg-slate-800 transition-colors bg-slate-900/40" title="Excluir">
+              <X size={14} />
+           </button>
+         )}
+         <div className="relative" ref={menuRef}>
+           <button onClick={(e) => { e.stopPropagation(); setIsMenuOpen(!isMenuOpen); setIsTransferMenuOpen(false); }} className={`p-1.5 rounded-lg transition-all ml-1 ${isMenuOpen || isHovered ? 'text-white bg-indigo-600 shadow-lg' : 'text-slate-600 hover:text-slate-400'}`}><MoreHorizontal size={14} /></button>
+           {isMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-44 bg-[#0F111A] rounded-2xl shadow-2xl border border-slate-800/60 z-[100] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                  {canEdit && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setIsTransferMenuOpen(!isTransferMenuOpen); }} 
+                      className={`w-full text-left px-4 py-2.5 text-[11px] font-bold flex items-center justify-between gap-3 transition-colors hover:bg-slate-800/50 ${isTransferMenuOpen ? 'text-indigo-400 bg-indigo-900/20' : 'text-slate-300'}`}
+                    >
+                      <div className="flex items-center gap-3"><Send size={14} className="text-slate-500"/> Encaminhar</div>
+                      <ChevronDown size={12} className={`transition-transform duration-200 ${isTransferMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                  {isTransferMenuOpen && (
+                    <div className="bg-slate-900/50 py-1 border-y border-slate-800/60 max-h-40 overflow-y-auto custom-scroll">
+                      {allUsers.filter(u => u.id !== task.userId).map(u => (
+                        <button 
+                          key={u.id} 
+                          onClick={() => { onReassignTask(task.id, u.id); setIsMenuOpen(false); setIsTransferMenuOpen(false); }}
+                          className="w-full text-left px-7 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-indigo-400 hover:bg-slate-800 transition-colors truncate"
+                        >
+                          {u.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="h-px bg-slate-800/60 my-1 mx-2"></div>
+                  <button onClick={() => { onViewTask(task); setIsMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-[11px] font-bold text-slate-400 hover:bg-slate-800/50 flex items-center gap-3 transition-colors"><Clock size={14}/> Histórico Completo</button>
+              </div>
+           )}
+         </div>
       </div>
     </div>
   );

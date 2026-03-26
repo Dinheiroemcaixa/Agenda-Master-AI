@@ -309,7 +309,7 @@ export const TaskColumn: React.FC<ExtendedColumnProps> = ({
 
       {!isCollapsed && (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="grid grid-cols-[50px_1fr_120px_110px_90px_110px_60px] gap-4 px-6 py-2.5 border-b border-slate-800/60 bg-[#1A1D2B]/30">
+            <div className="grid grid-cols-[50px_1fr_120px_110px_90px_110px_100px] gap-4 px-6 py-2.5 border-b border-slate-800/60 bg-[#1A1D2B]/30">
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">#</div>
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{isMeetingContext ? 'REUNIÃO' : 'TAREFA'}</div>
                 <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">RESPONSÁVEL</div>

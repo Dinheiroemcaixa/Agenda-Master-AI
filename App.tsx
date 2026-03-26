@@ -247,21 +247,53 @@ export default function App() {
     
     try {
       const now = new Date().toISOString();
-      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual_'));
-      if (persistentIds.length > 0) {
-        await supabase.from('tasks')
+      const idsToUpdate: string[] = [];
+      const virtualTasksToComplete: any[] = [];
+
+      selectedTaskIds.forEach(id => {
+        if (id.startsWith('virtual_')) {
+          const task = expandedTasks.find(t => t.id === id);
+          if (task) {
+            const { isVirtual, id: oldId, ...payload } = task;
+            virtualTasksToComplete.push({
+              ...payload,
+              dueDate: task.dueDate ? toDateString(task.dueDate) : null,
+              completed: true,
+              status: 'COMPLETED',
+              completedAt: now,
+              subtasks: JSON.stringify(task.subtasks || []),
+            });
+          }
+        } else {
+          idsToUpdate.push(id);
+        }
+      });
+
+      // 1. Atualizar tarefas reais
+      if (idsToUpdate.length > 0) {
+        const { error: updError } = await supabase.from('tasks')
           .update({ completed: true, status: 'COMPLETED', "completedAt": now })
-          .in('id', persistentIds);
+          .in('id', idsToUpdate);
+        if (updError) throw updError;
       }
       
+      // 2. Criar registros para as virtuais concluídas
+      if (virtualTasksToComplete.length > 0) {
+        const { error: insError } = await supabase.from('tasks').insert(virtualTasksToComplete);
+        if (insError) throw insError;
+      }
+
       setTasks(prev => prev.map(t => 
         selectedTaskIds.includes(t.id) ? { ...t, completed: true, status: 'COMPLETED', completedAt: new Date(now) } : t
       ));
       setSelectedTaskIds([]);
-    } catch (err) {
+      
+      setTimeout(() => fetchData(true), 500);
+    } catch (err: any) {
       console.error("Erro ao concluir tarefas em massa:", err);
+      alert("Erro ao concluir tarefas: " + (err.message || 'Erro desconhecido'));
     }
-  }, [selectedTaskIds, setTasks]);
+  }, [selectedTaskIds, expandedTasks, setTasks, fetchData]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedTaskIds.length === 0) return;

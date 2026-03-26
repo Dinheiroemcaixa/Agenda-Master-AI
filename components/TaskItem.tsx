@@ -119,7 +119,7 @@ export const TaskItem = React.memo<TaskItemProps>(({
         `}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => !isOverlay && onViewTask(task)}
+        onClick={() => !isOverlay && onToggle(task.id)}
     >
       {/* Selection Checkbox */}
       <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>

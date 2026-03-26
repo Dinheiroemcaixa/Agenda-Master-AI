@@ -268,17 +268,48 @@ export default function App() {
     if (!window.confirm(`Deseja EXCLUIR DEFINITIVAMENTE as ${selectedTaskIds.length} tarefas selecionadas?`)) return;
     
     try {
-      // Correção: IDs virtuais usam "_" como separador, não "-"
-      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual_'));
-      if (persistentIds.length > 0) {
-        await supabase.from('tasks').delete().in('id', persistentIds);
+      const idsToDelete: string[] = [];
+      const virtualTasksToPhysicalize: any[] = [];
+      
+      selectedTaskIds.forEach(id => {
+        if (id.startsWith('virtual_')) {
+          const task = expandedTasks.find(t => t.id === id);
+          if (task) {
+            const { isVirtual, id: oldId, ...payload } = task;
+            virtualTasksToPhysicalize.push({
+              ...payload,
+              dueDate: task.dueDate ? toDateString(task.dueDate) : null,
+              status: 'DELETED',
+              subtasks: JSON.stringify(task.subtasks || []),
+            });
+          }
+        } else {
+          idsToDelete.push(id);
+        }
+      });
+
+      // 1. Deletar tarefas reais do banco
+      if (idsToDelete.length > 0) {
+        const { error: delError } = await supabase.from('tasks').delete().in('id', idsToDelete);
+        if (delError) throw delError;
       }
+      
+      // 2. Criar "tumbstones" (marcas de exclusão) para as virtuais
+      if (virtualTasksToPhysicalize.length > 0) {
+        const { error: insError } = await supabase.from('tasks').insert(virtualTasksToPhysicalize);
+        if (insError) throw insError;
+      }
+
       setTasks(prev => prev.filter(t => !selectedTaskIds.includes(t.id)));
       setSelectedTaskIds([]);
-    } catch (err) {
+      
+      // Sincronizar após operações pesadas
+      setTimeout(() => fetchData(true), 500);
+    } catch (err: any) {
       console.error("Erro ao excluir tarefas em massa:", err);
+      alert("Erro ao excluir tarefas: " + (err.message || 'Erro desconhecido'));
     }
-  }, [selectedTaskIds, setTasks]);
+  }, [selectedTaskIds, expandedTasks, setTasks, fetchData]);
 
   const filteredTasks = useMemo(() => {
     const todayStr = toDateString(new Date());

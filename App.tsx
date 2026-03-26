@@ -280,11 +280,6 @@ export default function App() {
     }
   }, [selectedTaskIds, setTasks]);
 
-  const handleSelectAll = useCallback(() => {
-    const allFilteredIds = filteredTasks.map(t => t.id);
-    setSelectedTaskIds(allFilteredIds);
-  }, [filteredTasks]);
-
   const filteredTasks = useMemo(() => {
     const todayStr = toDateString(new Date());
     const query = searchQuery.toLowerCase();
@@ -354,6 +349,11 @@ export default function App() {
       return true;
     });
   }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions, viewType, listDateFilter, referenceDate]);
+
+  const handleSelectAll = useCallback(() => {
+    const allFilteredIds = filteredTasks.map(t => t.id);
+    setSelectedTaskIds(allFilteredIds);
+  }, [filteredTasks]);
 
   const tasksByUser = useMemo(() => {
     const grouped: Record<string, Task[]> = {};

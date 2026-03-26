@@ -20,6 +20,7 @@ interface DashboardHeaderProps {
   onBulkComplete: () => void;
   onBulkDelete: () => void;
   onSelectAll?: () => void;
+  onRescue?: () => void;
   totalFiltered?: number;
 }
 
@@ -28,7 +29,7 @@ export const DashboardHeader = React.memo<DashboardHeaderProps>(({
   viewType, setViewType, setIsTaskModalOpen,
   referenceDate, setReferenceDate, setListDateFilter,
   selectedTaskIds, onBulkComplete, onBulkDelete,
-  onSelectAll, totalFiltered = 0
+  onSelectAll, onRescue, totalFiltered = 0
 }) => {
   const hasSelection = selectedTaskIds.length > 0;
   const isDelayedView = activePage === 'dashboard' && dashboardFilter === 'delayed';
@@ -37,11 +38,21 @@ export const DashboardHeader = React.memo<DashboardHeaderProps>(({
     <header className="px-6 py-6 bg-[#0F111A] border-b border-slate-800/60 z-30">
       <div className="flex items-center justify-between mb-6">
         <div className="flex flex-col">
-          <h1 className="text-xl font-black text-white leading-tight uppercase tracking-tighter">
-            {activePage === 'dashboard' ? (dashboardFilter === 'delayed' ? 'Tarefas Atrasadas' : 'Minhas Tarefas') :
-             activePage === 'priority' ? 'Favoritos' :
-             activePage === 'meetings' ? 'Reuniões' : 'Equipe'}
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-black text-white leading-tight uppercase tracking-tighter">
+              {activePage === 'dashboard' ? (dashboardFilter === 'delayed' ? 'Tarefas Atrasadas' : 'Minhas Tarefas') :
+               activePage === 'priority' ? 'Favoritos' :
+               activePage === 'meetings' ? 'Reuniões' : 'Equipe'}
+            </h1>
+            {activePage === 'dashboard' && onRescue && (
+              <button 
+                onClick={onRescue}
+                className="text-[8px] font-black text-rose-400 hover:text-rose-300 uppercase tracking-widest bg-rose-900/10 px-2 py-1 rounded border border-rose-500/20 transition-all hover:bg-rose-900/30"
+              >
+                Resgatar Deletadas (Emergência)
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-3 mt-1">
             <p className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest">
               {hasSelection ? `${selectedTaskIds.length} selecionadas` : 'Visualize em Lista, Kanban ou Agenda'}

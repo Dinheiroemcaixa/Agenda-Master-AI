@@ -414,9 +414,40 @@ export default function App() {
   }, [expandedTasks, searchQuery, activePage, dashboardFilter, currentUser, hasAdminPermissions, hasOperatorPermissions, viewType, listDateFilter, referenceDate]);
 
   const handleSelectAll = useCallback(() => {
-    const allFilteredIds = filteredTasks.map(t => t.id);
-    setSelectedTaskIds(allFilteredIds);
-  }, [filteredTasks]);
+    const todayStr = toDateString(new Date());
+    // SEGURANÇA: Se estiver no dashboard principal (não só no atraso), 
+    // filtramos para NÃO selecionar as tarefas de HOJE por engano.
+    const onlyDelayed = activePage === 'dashboard' && dashboardFilter === 'delayed';
+    
+    let idsToSelect = filteredTasks.map(t => t.id);
+    
+    if (!onlyDelayed) {
+      // Se não for a aba de atraso, remove hoje da seleção em massa por segurança
+      idsToSelect = filteredTasks
+        .filter(t => !t.dueDate || toDateString(new Date(t.dueDate)) < todayStr)
+        .map(t => t.id);
+    }
+    
+    setSelectedTaskIds(idsToSelect);
+  }, [filteredTasks, activePage, dashboardFilter]);
+
+  const handleRescueDeleted = useCallback(async () => {
+    try {
+      // Busca tarefas marcadas como DELETED criadas recentemente
+      const { data, error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('status', 'DELETED');
+        
+      if (error) throw error;
+      
+      alert("Comando de resgate enviado! Recarregando sistema...");
+      fetchData(true);
+    } catch (err: any) {
+      console.error("Erro no resgate:", err);
+      alert("Não foi possível realizar o resgate automático.");
+    }
+  }, [fetchData]);
 
   const tasksByUser = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
@@ -653,6 +684,7 @@ export default function App() {
             onBulkComplete={handleBulkComplete}
             onBulkDelete={handleBulkDelete}
             onSelectAll={handleSelectAll}
+            onRescue={handleRescueDeleted}
             totalFiltered={filteredTasks.length}
           />
         )}

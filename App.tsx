@@ -247,9 +247,12 @@ export default function App() {
     
     try {
       const now = new Date().toISOString();
-      await supabase.from('tasks')
-        .update({ completed: true, status: 'COMPLETED', "completedAt": now })
-        .in('id', selectedTaskIds);
+      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual-'));
+      if (persistentIds.length > 0) {
+        await supabase.from('tasks')
+          .update({ completed: true, status: 'COMPLETED', "completedAt": now })
+          .in('id', persistentIds);
+      }
       
       setTasks(prev => prev.map(t => 
         selectedTaskIds.includes(t.id) ? { ...t, completed: true, status: 'COMPLETED', completedAt: new Date(now) } : t
@@ -265,7 +268,10 @@ export default function App() {
     if (!window.confirm(`Deseja EXCLUIR DEFINITIVAMENTE as ${selectedTaskIds.length} tarefas selecionadas?`)) return;
     
     try {
-      await supabase.from('tasks').delete().in('id', selectedTaskIds);
+      const persistentIds = selectedTaskIds.filter(id => !id.startsWith('virtual-'));
+      if (persistentIds.length > 0) {
+        await supabase.from('tasks').delete().in('id', persistentIds);
+      }
       setTasks(prev => prev.filter(t => !selectedTaskIds.includes(t.id)));
       setSelectedTaskIds([]);
     } catch (err) {

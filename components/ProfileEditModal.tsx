@@ -46,10 +46,21 @@ export const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ user, isOpen
         updates.password = await hashPassword(newPassword);
       }
 
-      const { error } = await supabase
+      let { error } = await supabase
         .from('users')
         .update(updates)
         .eq('id', user.id);
+
+      // Fallback: Se der erro de coluna não encontrada (profile_color), tentamos de novo sem ela
+      if (error && (error.message?.includes('profile_color') || error.code === 'PGRST204')) {
+        console.warn("Coluna profile_color não encontrada, tentando sem ela...");
+        const { profile_color, ...fallbackUpdates } = updates;
+        const retry = await supabase
+          .from('users')
+          .update(fallbackUpdates)
+          .eq('id', user.id);
+        error = retry.error;
+      }
 
       if (error) throw error;
 

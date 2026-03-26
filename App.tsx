@@ -431,24 +431,6 @@ export default function App() {
     setSelectedTaskIds(idsToSelect);
   }, [filteredTasks, activePage, dashboardFilter]);
 
-  const handleRescueDeleted = useCallback(async () => {
-    try {
-      // Busca tarefas marcadas como DELETED criadas recentemente
-      const { data, error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('status', 'DELETED');
-        
-      if (error) throw error;
-      
-      alert("Comando de resgate enviado! Recarregando sistema...");
-      fetchData(true);
-    } catch (err: any) {
-      console.error("Erro no resgate:", err);
-      alert("Não foi possível realizar o resgate automático.");
-    }
-  }, [fetchData]);
-
   const tasksByUser = useMemo(() => {
     const grouped: Record<string, Task[]> = {};
     filteredTasks.forEach(task => {
@@ -684,7 +666,6 @@ export default function App() {
             onBulkComplete={handleBulkComplete}
             onBulkDelete={handleBulkDelete}
             onSelectAll={handleSelectAll}
-            onRescue={handleRescueDeleted}
             totalFiltered={filteredTasks.length}
           />
         )}
